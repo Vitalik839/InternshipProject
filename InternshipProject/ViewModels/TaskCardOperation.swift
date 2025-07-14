@@ -6,3 +6,11 @@
 //
 
 import Foundation
+
+class TaskCardOperation: ObservableObject {
+    @Published var taskCards: [TaskCard] = []
+    
+    func addTaskCard(_ taskCard: TaskCard) {
+        taskCards.append(taskCard)
+    }
+}

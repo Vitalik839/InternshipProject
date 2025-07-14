@@ -60,7 +60,7 @@ struct AllTasksView: View {
                         
                         Rectangle().frame(width: borderWidth).foregroundColor(borderColor)
                         
-                        LabelDifficulty(task: task)
+                        LabelDifficulty(difficulty: task.difficulty)
                             .frame(width: priorityWidth)
                         
                         Rectangle().frame(width: borderWidth).foregroundColor(borderColor)
@@ -87,13 +87,13 @@ struct AllTasksView: View {
 
 #Preview {
     AllTasksView(tasks: [
-        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted),
-        TaskCard(id: UUID(), title: "BCOLA138 Study", priority: .easy, tags: ["Learn"], commentCount: 0, status: .notStarted),
-        TaskCard(id: UUID(), title: "E-commerce Study", priority: .medium, tags: ["Learn"], commentCount: 0, status: .notStarted),
-        TaskCard(id: UUID(), title: "Song finalising", priority: .medium, tags: ["Self"], commentCount: 0, status: .inProgress),
-        TaskCard(id: UUID(), title: "Learn Fonts", priority: .medium, tags: ["Self"], commentCount: 0, status: .inProgress),
-        TaskCard(id: UUID(), title: "My Task", priority: .medium, tags: ["Tech", "Polish"], commentCount: 1, status: .done),
-        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted),
-        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted)
+        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", difficulty: .hard, tags: ["Polish", "Bug"], status: .notStarted),
+        TaskCard(id: UUID(), title: "BCOLA138 Study", difficulty: .easy, tags: ["Learn"], status: .notStarted),
+        TaskCard(id: UUID(), title: "E-commerce Study", difficulty: .medium, tags: ["Learn"], status: .notStarted),
+        TaskCard(id: UUID(), title: "Song finalising", difficulty: .medium, tags: ["Self"], status: .inProgress),
+        TaskCard(id: UUID(), title: "Learn Fonts", difficulty: .medium, tags: ["Self"], status: .inProgress),
+        TaskCard(id: UUID(), title: "My Task", difficulty: .medium, tags: ["Tech", "Polish"], status: .done),
+        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", difficulty: .hard, tags: ["Polish", "Bug"], status: .notStarted),
+        TaskCard(id: UUID(), title: "Premiere pro Caba Videos Edit", difficulty: .hard, tags: ["Polish", "Bug"], status: .notStarted)
     ])
 }

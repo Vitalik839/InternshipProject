@@ -12,11 +12,14 @@ struct Toolbar: View {
     @Binding var searchText: String
     //@Binding var filter: TaskFilter
     
+    @EnvironmentObject var viewSettings: ViewSettings
+
     @State private var showViewModePicker = false
     @State private var isSearching = false
     @State private var showFilterSheet = false
+    @State private var showPropertiesMenu = false
     @FocusState private var isSearchFieldFocused: Bool
-
+    
     
     var body: some View {
         Text("Tasks Tracker")
@@ -67,7 +70,7 @@ struct Toolbar: View {
                 HStack(spacing: 8) {
                     TextField("Search tasks…", text: $searchText)
                         .textFieldStyle(.roundedBorder)
-                        // ✅ Прив'язуємо фокус до поля вводу
+                    // ✅ Прив'язуємо фокус до поля вводу
                         .focused($isSearchFieldFocused)
                         .onSubmit {
                             isSearchFieldFocused = false // Ховаємо клавіатуру
@@ -90,9 +93,15 @@ struct Toolbar: View {
             // Заглушки для фільтрації / налаштувань
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .foregroundColor(.gray)
-            Image(systemName: "slider.horizontal.3")
-                .foregroundColor(.gray)
-            
+            Button {
+                showPropertiesMenu = true
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+            }
+            .foregroundColor(.gray)
+            .sheet(isPresented: $showPropertiesMenu) {
+                PropertiesMenuView()
+            }
             
             Button(action: {}) {
                 Image(systemName: "plus")
@@ -108,6 +117,7 @@ struct Toolbar: View {
         .padding(.vertical, 8)
         .padding(.trailing, 10)
         .background(.bg)
+        .environmentObject(viewSettings)
         .sheet(isPresented: $showViewModePicker) {
             ModeSelection(
                 selectedMode: $selectedMode,
@@ -116,7 +126,6 @@ struct Toolbar: View {
         }
     }
 }
-
 
 #Preview {
     ToolbarPreviewWrapper()
@@ -127,6 +136,6 @@ struct ToolbarPreviewWrapper: View {
     @State private var currentText: String = ""
 
     var body: some View {
-        Toolbar(selectedMode: $currentMode, searchText: $currentText)
+        Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(ViewSettings())
     }
 }

@@ -8,33 +8,39 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct TaskColumnView: View {
-    let status: TaskStatus
+protocol GroupableProperty: Hashable, Identifiable, Sendable {
+    var id: Self { get }
+    var titleColumn: String { get } // Назва для заголовка колонки
+    var color: Color { get } // Колір для заголовка
+}
+
+extension GroupableProperty {
+    public var id: Self { self } // ID - це саме значення
+}
+
+extension String: @retroactive Identifiable {}
+extension String: GroupableProperty {
+    var titleColumn: String { self }
+    var color: Color { .purple }
+}
+
+struct TaskColumnView<Group: GroupableProperty>: View {
+    let group: Group // Замість 'status', тепер 'group'
     let tasks: [TaskCard]
+    let onTaskDropped: (TaskCard, Group) -> Void // Тепер передаємо і картку, і групу
     
-    let onTaskDropped: (TaskCard) -> Void
     @State private var isTargeted: Bool = false
+    @EnvironmentObject var viewSettings: ViewSettings
     
     var body: some View {
         VStack (alignment: .leading){
-            LabelStatus(status: status).padding(10)
-            
+            LabelTitleColumn(title: group.titleColumn, colorBg: group.color)
+            //LabelStatus(status: status).padding(10)
             VStack(spacing: 8) {
                 ForEach(tasks) { task in
                     TaskCardView(task: task)
-                        .onDrag {
-                            let provider = NSItemProvider()
-                            do {
-                                let data = try JSONEncoder().encode(task)
-                                provider.registerDataRepresentation(forTypeIdentifier: UTType.taskCard.identifier, visibility: .all) { completion in
-                                    completion(data, nil)
-                                    return nil
-                                }
-                            } catch {
-                                print("Encoding failed")
-                            }
-                            return provider
-                        }
+                        .draggable(task)
+                        .environmentObject(viewSettings)
                 }
             }
             Button(action: {
@@ -47,60 +53,30 @@ struct TaskColumnView: View {
                 }
                 .padding()
                 .frame(width: 280)
-                .cornerRadius(16)
                 .fontWeight(.bold)
-                .foregroundColor(status.colorTask)
+                .foregroundColor(.gray)
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(status.colorTask, lineWidth: 1)
+                    .stroke(.gray, lineWidth: 1)
             )
         }
         .padding(.bottom, 15)
         .frame(width: 300)
-        .background(status.color)
+        .background(isTargeted ? group.color.saturated(by: 0.5): group.color)
         .cornerRadius(15)
         .padding(.trailing, 10)
-        .onDrop(of: [UTType.taskCard.identifier], isTargeted: $isTargeted) { providers in
-            guard !providers.isEmpty else { return false }
+        .dropDestination(for: TaskCard.self) { droppedTasks, location in
+            guard let droppedTask = droppedTasks.first else { return false }
+            onTaskDropped(droppedTask, group)
             
-            for provider in providers {
-                provider.loadDataRepresentation(forTypeIdentifier: UTType.taskCard.identifier) { data, error in
-                    if let data, let decoded = try? JSONDecoder().decode(TaskCard.self, from: data) {
-                        DispatchQueue.main.async {
-                            onTaskDropped(decoded)
-                        }
-                    }
-                }
-            }
-            return true // Only return true if we handled the drop
+            return true // підтверджуємо успішне скидання
+        } isTargeted: { isTargeting in
+            self.isTargeted = isTargeting
         }
     }
 }
 
-extension Color {
-    /// Робить колір більш насиченим.
-    /// - Parameter amount: Значення від 0.0 до 1.0, на яке потрібно збільшити насиченість.
-    /// - Returns: Новий, більш насичений колір.
-    func saturated(by amount: CGFloat) -> Color {
-        // Конвертуємо SwiftUI Color в UIColor для доступу до компонентів HSB
-        let uiColor = UIColor(self)
-        
-        // Отримуємо компоненти HSB
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-        
-        uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        
-        // Збільшуємо насиченість, обмежуючи значення до 1.0
-        let newSaturation = min(saturation + amount, 1.0)
-        
-        // Створюємо новий колір з оновленою насиченістю
-        return Color(hue: hue, saturation: newSaturation, brightness: brightness, opacity: alpha)
-    }
-}
 //#Preview {
 //    TaskColumnView(status: .notStarted, tasks:[TaskCard(title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted)])
 //}

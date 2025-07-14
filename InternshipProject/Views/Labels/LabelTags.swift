@@ -9,7 +9,7 @@ import SwiftUI
 
 struct LabelTags: View {
     @State var tags: [String]
-
+    
     private let presetTags: [String] = ["Tech", "Polish", "Self"]
     @State private var showCustomTagAlert = false
     @State private var customTagInput = ""
@@ -30,13 +30,17 @@ struct LabelTags: View {
                     showCustomTagAlert = true
                 }
             } label: {
-                ForEach(tags, id: \.self) { tag in
-                    Text(tag)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color.blue.opacity(0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
+                if tags.isEmpty {
+                    Text("Add tags")
+                } else {
+                    ForEach(tags, id: \.self) { tag in
+                        Text(tag)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.blue.opacity(0.7))
+                            .foregroundColor(.white)
+                            .cornerRadius(6)
+                    }
                 }
             }
         }
@@ -51,6 +55,5 @@ struct LabelTags: View {
             })
             Button("Cancel", role: .cancel, action: {})
         }
-
     }
 }
