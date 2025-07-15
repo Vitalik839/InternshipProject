@@ -9,13 +9,41 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum FieldValue: Codable, Hashable {
+    case text(String)
+    case number(Double)
+    case boolean(Bool)
+    case date(Date)
+    case url(URL?)
+    case selection(String?) // Зберігає обрану опцію зі списку
+}
 
-struct TaskCard: Identifiable, Hashable, Codable, Transferable {
+enum FieldType: String, Codable, CaseIterable {
+    case text
+    case number
+    case boolean
+    case date
+    case url
+    case selection
+}
+
+// Ця структура визначає "креслення" для кастомного поля.
+// Наприклад: { name: "Priority", type: .selection, options: ["High", "Medium", "Low"] }
+struct FieldDefinition: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var name: String
+    var type: FieldType
+    var selectionOptions: [String]? // Тільки для типу .selection
+}
+
+struct TaskCard: Identifiable, Hashable, Codable {
     var id: UUID
     var title: String
-    var difficulty: Difficulty
-    var tags: [String]
-    var status: TaskStatus
+    
+    // Ключ - це `id` з `FieldDefinition`, а значення - це дані, введені користувачем.
+    var properties: [UUID: FieldValue]
+}
+extension TaskCard: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .taskCard)
     }

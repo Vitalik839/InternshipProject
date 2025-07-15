@@ -12,7 +12,7 @@ struct Toolbar: View {
     @Binding var searchText: String
     //@Binding var filter: TaskFilter
     
-    @EnvironmentObject var viewSettings: ViewSettings
+    @EnvironmentObject var viewSettings: TaskBoardViewModel
 
     @State private var showViewModePicker = false
     @State private var isSearching = false
@@ -100,7 +100,7 @@ struct Toolbar: View {
             }
             .foregroundColor(.gray)
             .sheet(isPresented: $showPropertiesMenu) {
-                PropertiesMenuView()
+                PropertiesMenuView().environmentObject(viewSettings)
             }
             
             Button(action: {}) {
@@ -136,6 +136,6 @@ struct ToolbarPreviewWrapper: View {
     @State private var currentText: String = ""
 
     var body: some View {
-        Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(ViewSettings())
+        Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(TaskBoardViewModel())
     }
 }

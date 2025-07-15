@@ -8,13 +8,13 @@
 import SwiftUI
 
 struct PropertiesMenuView: View {
-    @EnvironmentObject var settings: ViewSettings
-    // Розділимо властивості на показані та приховані
-    private var shownProperties: [TaskProperty] {
-        TaskProperty.allCases.filter { settings.visibleProperties.contains($0) }
+    @EnvironmentObject var viewModel: TaskBoardViewModel
+    private var shownProperties: [FieldDefinition] {
+        viewModel.projectDefinitions.filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
     }
-    private var hiddenProperties: [TaskProperty] {
-        TaskProperty.allCases.filter { !settings.visibleProperties.contains($0) }
+    
+    private var hiddenProperties: [FieldDefinition] {
+        viewModel.projectDefinitions.filter { !viewModel.visibleCardPropertyIDs.contains($0.id) }
     }
     var body: some View {
         NavigationView {
@@ -35,26 +35,16 @@ struct PropertiesMenuView: View {
         }
     }
     @ViewBuilder
-    private func propertyRow(for property: TaskProperty, isVisible: Bool) -> some View {
+    private func propertyRow(for property: FieldDefinition, isVisible: Bool) -> some View {
         HStack {
-            Image(systemName: property.systemImageName)
-                .frame(width: 20)
-            Text(property.rawValue)
+            Text(property.name)
             Spacer()
             Button(action: {
-                toggleVisibility(for: property)
-                print("djfjdjf")
+                viewModel.toggleCardPropertyVisibility(id: property.id)
             }) {
                 Image(systemName: isVisible ? "eye" : "eye.slash")
             }
             .buttonStyle(.plain) // Прибирає синій колір кнопки
-        }
-    }
-    private func toggleVisibility(for property: TaskProperty) {
-        if settings.visibleProperties.contains(property) {
-            settings.visibleProperties.remove(property)
-        } else {
-            settings.visibleProperties.insert(property)
         }
     }
 }

@@ -8,40 +8,80 @@
 import SwiftUI
 
 struct TaskCardView: View {
-    @EnvironmentObject var settings: ViewSettings
-    let task: TaskCard
+    let card: TaskCard
+    let projectDefinitions: [FieldDefinition] // Шаблони полів з проекту
+    let visiblePropertyIDs: Set<UUID>
+    
+    // Можна знайти визначення поля "Status" для кольору картки
+    private var statusValue: FieldValue? {
+        // Знаходимо ID поля "Status" у визначеннях проекту
+        guard let statusDefinitionID = projectDefinitions.first(where: { $0.name == "Status" })?.id else {
+            return nil
+        }
+        // Повертаємо значення з картки для цього ID
+        return card.properties[statusDefinitionID]
+    }
+    
+    // Визначаємо колір фону на основі статусу
+    private var backgroundColor: Color {
+        guard let status = statusValue, case .selection(let option) = status else {
+            return .gray.opacity(0.2) // Колір за замовчуванням
+        }
+        
+        switch option {
+        case "To Do":
+            return Color("taskNotStarted")
+        case "In Progress":
+            return Color("taskInProgress")
+        case "Done":
+            return Color("taskDone")
+        default:
+            return .gray.opacity(0.2)
+        }
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                if settings.visibleProperties.contains(.taskName) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text(task.title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                Text(card.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            }
+            .padding(.bottom, 6)
+            
+            // Динамічно відображаємо всі інші властивості
+            ForEach(projectDefinitions.filter { visiblePropertyIDs.contains($0.id) }) { definition in
+                if definition.name != "Status", let value = card.properties[definition.id] {
+                    PropertyDisplayView(definition: definition, value: value)
                 }
-            }
-            if settings.visibleProperties.contains(.priority) {
-                LabelDifficulty(difficulty: task.difficulty)
-            }
-            if settings.visibleProperties.contains(.tags) {
-                LabelTags(tags: task.tags)
             }
         }
         .padding()
-        .background(task.status.colorTask)
+        .frame(width: 280, alignment: .leading)
+        .background(backgroundColor) // Використовуємо динамічний колір
         .cornerRadius(16)
-        .frame(width: 280)
     }
 }
 
+#Preview {
+    let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: TaskStatus.allCases.map(\.rawValue))
+    let priorityDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: Difficulty.allCases.map(\.rawValue))
+    let tags = FieldDefinition(name: "Tags", type: .selection, selectionOptions: ["Tech", "Polish", "Self"])
+    let effortDef = FieldDefinition(name: "Effort", type: .number)
+    
+    TaskCardView(card: TaskCard(
+        id: UUID(),
+        title: "Design new login screen",
+        properties: [
+            statusDef.id: .selection("Done"),
+            priorityDef.id: .selection("Medium"),
+            tags.id: .selection("Polish"),
+            effortDef.id: .number(8)
+        ]),
+                 projectDefinitions: [statusDef, priorityDef, tags, effortDef],
+                 visiblePropertyIDs: Set())
+}
 
-//#Preview {
-//    TaskCardView( task: TaskCard(id: UUID(), properties: [
-//        Property(name: "Task Name", type: .text, value: .text("Premiere pro Caba Videos Edit")),
-//        Property(name: "Priority", type: .selection, value: .selection("Hard"), selectionOptions: Difficulty.allCases.map(\.rawValue)),
-//        Property(name: "Tags", type: .selection, value: .selection("Polish,Bug"), selectionOptions: ["Polish", "Bug", "Tech"]),
-//        Property(name: "Status", type: .selection, value: .selection("To Do"), selectionOptions: ["To Do", "In Progress", "Done"])
-//    ])
-//    ).environmentObject(ViewSettings())
-//}
+

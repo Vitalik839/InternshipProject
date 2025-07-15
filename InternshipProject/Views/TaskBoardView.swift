@@ -8,15 +8,17 @@
 import SwiftUI
 
 struct TaskBoardView: View {
-    @State private var currentMode: ViewMode = .byStatus
-    @State private var searchText: String = ""
-    @StateObject private var viewSettings = ViewSettings()
     @StateObject private var viewModel = TaskBoardViewModel()
+    @StateObject private var viewSettings = ViewSettings()
     
+    // Цей State керує перемиканням між режимами (дошка, список і т.д.)
+    @State private var currentMode: ViewMode = .byStatus
     
     var body: some View {
         VStack(alignment: .leading){
-            Toolbar(selectedMode: $currentMode, searchText: $searchText)
+            // Toolbar тепер прив'язаний до searchText у ViewModel
+            Toolbar(selectedMode: $currentMode, searchText: $viewModel.searchText)
+                .environmentObject(viewModel)
             Picker("Group By", selection: $viewModel.grouping.animation()) {
                 ForEach(TaskBoardViewModel.Grouping.allCases, id: \.self) { mode in
                     Text(mode.rawValue).tag(mode)
@@ -24,34 +26,61 @@ struct TaskBoardView: View {
             }
             .pickerStyle(.segmented)
             .padding(.bottom)
-            
+            .padding(.trailing, 10)
             switch currentMode {
             case .byStatus:
-                ScrollView([.horizontal, .vertical]) {
-                    HStack(alignment: .top, spacing: 8) {
-                        ForEach(TaskStatus.allCases, id: \.self) { status in
-                            TaskColumnView(
-                                group: status,
-                                tasks: viewModel.tasks(for: status),
-                                onTaskDropped: { droppedTask, newGroup in
-                                    viewModel.handleDrop(of: droppedTask, on: newGroup)
-                                }
-                            )
-                        }
-                    }
-                }
+                boardView
             case .all:
-                AllTasksView(tasks: viewModel.allTasks)
+                AllTasksView(viewModel: viewModel)
             case .myTasks:
-                Text("My Tasks View").padding()
+                Text("My Tasks View").foregroundStyle(.white)
             case .checklist:
-                Text("Checklist View").padding()
+                Text("Checklist View").foregroundStyle(.white)
             }
         }
-        
         .padding(.leading, 10)
-        .background(.bg)
-        .environmentObject(viewSettings)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Color("bg"))
+        .environmentObject(viewSettings) // Передаємо viewSettings усім дочірнім View
+    }
+    
+    // Я виніс дошку в окремий ViewBuilder для чистоти коду
+    @ViewBuilder
+    private var boardView: some View {
+        VStack {
+            ScrollView([.vertical, .horizontal], showsIndicators: false) {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(TaskStatus.allCases, id: \.self) { status in
+                        TaskColumnView(
+                            group: status,
+                            cards: viewModel.cards(for: status),
+                            projectDefinitions: viewModel.projectDefinitions,
+                            visibleCardPropertyIDs: viewModel.visibleCardPropertyIDs,
+                            columnColor: color(for: status),
+                            onTaskDropped: { droppedCard, newGroup in
+                                viewModel.handleDrop(of: droppedCard, on: newGroup)
+                            }
+                        ).frame(maxHeight: .infinity, alignment: .top)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    private func color(for group: any GroupableProperty) -> Color {
+        guard let groupKey = group as? String else { return .gray }
+        
+        // Використовуємо енуми зі старих моделей для отримання кольорів
+        switch viewModel.grouping {
+        case .byStatus:
+            return TaskStatus(rawValue: groupKey)?.colorTask ?? .gray
+        case .byDifficulty:
+            return Difficulty(rawValue: groupKey)?.color ?? .gray
+        case .byTag:
+            // Можна додати логіку для різних кольорів тегів
+            return .blue
+        }
     }
 }
 

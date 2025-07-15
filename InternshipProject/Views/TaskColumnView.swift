@@ -25,24 +25,31 @@ extension String: GroupableProperty {
 }
 
 struct TaskColumnView<Group: GroupableProperty>: View {
-    let group: Group // Замість 'status', тепер 'group'
-    let tasks: [TaskCard]
-    let onTaskDropped: (TaskCard, Group) -> Void // Тепер передаємо і картку, і групу
-    
+    let group: Group
+    let cards: [TaskCard] // Змінено з `tasks` на `cards` для відповідності моделі
+    let projectDefinitions: [FieldDefinition] // Передаємо визначення для TaskCardView
+    let visibleCardPropertyIDs: Set<UUID>
+    let columnColor: Color // Колір для колонки
+    let onTaskDropped: (TaskCard, Group) -> Void
+
     @State private var isTargeted: Bool = false
     @EnvironmentObject var viewSettings: ViewSettings
-    
+
     var body: some View {
-        VStack (alignment: .leading){
-            LabelTitleColumn(title: group.titleColumn, colorBg: group.color)
-            //LabelStatus(status: status).padding(10)
+        VStack (alignment: .leading, spacing: 0){
+            LabelTitleColumn(title: group.titleColumn, colorBg: columnColor.opacity(0.8))
+                .padding(.bottom, 8)
+
             VStack(spacing: 8) {
-                ForEach(tasks) { task in
-                    TaskCardView(task: task)
-                        .draggable(task)
-                        .environmentObject(viewSettings)
+                ForEach(cards) { card in
+                    TaskCardView(card: card, projectDefinitions: projectDefinitions,
+                    visiblePropertyIDs: visibleCardPropertyIDs)
+                        .draggable(card)
+                        .environmentObject(viewSettings) // ViewSettings все ще потрібен тут
                 }
             }
+            .padding(.bottom)
+
             Button(action: {
                 // Ваша дія для створення нового завдання
             }) {
@@ -58,25 +65,22 @@ struct TaskColumnView<Group: GroupableProperty>: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(.gray, lineWidth: 1)
+                    .stroke(.gray, style: StrokeStyle(lineWidth: 1))
             )
         }
-        .padding(.bottom, 15)
+        .padding(10)
         .frame(width: 300)
-        .background(isTargeted ? group.color.saturated(by: 0.5): group.color)
-        .cornerRadius(15)
-        .padding(.trailing, 10)
+        .background(isTargeted ? columnColor.opacity(0.5) : columnColor.opacity(0.25))
+        .cornerRadius(12)
         .dropDestination(for: TaskCard.self) { droppedTasks, location in
             guard let droppedTask = droppedTasks.first else { return false }
             onTaskDropped(droppedTask, group)
-            
-            return true // підтверджуємо успішне скидання
+            return true
         } isTargeted: { isTargeting in
             self.isTargeted = isTargeting
         }
     }
 }
-
 //#Preview {
 //    TaskColumnView(status: .notStarted, tasks:[TaskCard(title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted)])
 //}
