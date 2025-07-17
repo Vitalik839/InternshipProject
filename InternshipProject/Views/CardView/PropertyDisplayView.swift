@@ -8,35 +8,28 @@
 import SwiftUI
 
 struct PropertyDisplayView: View {
+    @EnvironmentObject var viewModel: TaskBoardViewModel
+    
+    let cardID: UUID
     let definition: FieldDefinition
     let value: FieldValue
-
+    
     var body: some View {
-        // Перевіряємо, чи є ця властивість однією з наперед визначених
         switch definition.name {
         case "Status":
-            if case .selection(let option) = value, let statusString = option, let status = TaskStatus(rawValue: statusString) {
-                LabelStatus(status: status)
-            }
+            LabelStatus(status: statusBinding)
             
         case "Difficulty":
-             if case .selection(let option) = value, let difficultyString = option, let difficulty = Difficulty(rawValue: difficultyString) {
-                LabelDifficulty(difficulty: difficulty)
-            }
-
+            LabelDifficulty(difficulty: difficultyBinding)
+            
         case "Tags":
-            // Примітка: для повноцінної підтримки кількох тегів краще мати тип .multiSelection,
-            // але для інтеграції покажемо один тег.
-            if case .selection(let option) = value, let tag = option {
-                LabelTags(tags: [tag]) // Передаємо тег як масив з одного елемента
-            }
+            LabelTags(tags: tagsBinding)
             
         default:
             defaultPropertyView
         }
     }
     
-    // Стандартне відображення для всіх інших (неспеціальних) полів
     @ViewBuilder
     private var defaultPropertyView: some View {
         HStack {
@@ -69,8 +62,83 @@ struct PropertyDisplayView: View {
                         .font(.caption)
                         .foregroundColor(.blue)
                 }
+            case .multiSelection(let tags):
+                if tags.isEmpty {
+                    Text("Empty").foregroundColor(.gray)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.gray.opacity(0.5))
+                                    .cornerRadius(6)
+                            }
+                        }
+                    }
+                }
             }
+            
         }
+    }
+    
+    private var difficultyBinding: Binding<Difficulty> {
+        Binding<Difficulty>(
+            get: {
+                if case .selection(let option) = value,
+                   let difficulty = Difficulty(rawValue: option ?? "") {
+                    return difficulty
+                }
+                return .easy // за замовчуванням
+            },
+            set: { newDifficulty in
+                let newValue = FieldValue.selection(newDifficulty.rawValue)
+                viewModel.updateProperty(
+                    for: cardID,
+                    definitionID: definition.id,
+                    newValue: newValue
+                )
+            }
+        )
+    }
+    private var statusBinding: Binding<TaskStatus> {
+        Binding<TaskStatus>(
+            get: {
+                if case .selection(let option) = value,
+                   let status = TaskStatus(rawValue: option ?? "") {
+                    return status
+                }
+                return .notStarted
+            },
+            set: { newStatus in
+                let newValue = FieldValue.selection(newStatus.rawValue)
+                viewModel.updateProperty(
+                    for: cardID,
+                    definitionID: definition.id,
+                    newValue: newValue
+                )
+            }
+        )
+    }
+    private var tagsBinding: Binding<[String]> {
+        Binding<[String]>(
+            get: {
+                if case .multiSelection(let tags) = value {
+                    return tags
+                }
+                return []
+            },
+            set: { newTags in
+                let newValue = FieldValue.multiSelection(newTags)
+                viewModel.updateProperty(
+                    for: cardID,
+                    definitionID: definition.id,
+                    newValue: newValue
+                )
+            }
+        )
     }
 }
 

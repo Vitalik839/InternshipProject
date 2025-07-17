@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct LabelTags: View {
-    @State var tags: [String]
-    
-    private let presetTags: [String] = ["Tech", "Polish", "Self"]
+    @Binding var tags: [String]
+
+    private let presetTags: [String] = ["Tech", "Polish", "Self", "Career"]
     @State private var showCustomTagAlert = false
     @State private var customTagInput = ""
     var body: some View {

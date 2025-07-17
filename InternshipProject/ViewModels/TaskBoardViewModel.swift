@@ -22,7 +22,6 @@ final class TaskBoardViewModel: ObservableObject {
     @Published var visibleDefinitionIDs: Set<UUID> = []
     @Published var visibleCardPropertyIDs: Set<UUID> = []
     
-    /// Перемикає видимість властивості на картці.
     func toggleCardPropertyVisibility(id: UUID) {
         if visibleCardPropertyIDs.contains(id) {
             visibleCardPropertyIDs.remove(id)
@@ -43,7 +42,8 @@ final class TaskBoardViewModel: ObservableObject {
         // Створюємо шаблони для полів, які будуть у всіх карток
         let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: TaskStatus.allCases.map(\.rawValue))
         let difficultyDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: Difficulty.allCases.map(\.rawValue))
-        let tagsDef = FieldDefinition(name: "Tags", type: .selection, selectionOptions: ["Polish", "Bug", "Feature Request"]) // Для простоти поки що теж .selection
+        let tagsDef = FieldDefinition(name: "Tags", type: .multiSelection,
+                                      selectionOptions: ["Polish", "Bug", "Feature Request", "Self", "Tech"])
         let effortDef = FieldDefinition(name: "Effort", type: .number)
         
         // Зберігаємо шаблони у ViewModel
@@ -55,7 +55,7 @@ final class TaskBoardViewModel: ObservableObject {
             properties: [
                 statusDef.id: .selection(TaskStatus.inProgress.rawValue),
                 difficultyDef.id: .selection("Hard"),
-                tagsDef.id: .selection("Feature Request"),
+                tagsDef.id: .multiSelection(["Feature Request"]),
                 effortDef.id: .number(8)
             ]
         )
@@ -66,7 +66,7 @@ final class TaskBoardViewModel: ObservableObject {
             properties: [
                 statusDef.id: .selection(TaskStatus.notStarted.rawValue),
                 difficultyDef.id: .selection("Medium"),
-                tagsDef.id: .selection("Bug"),
+                tagsDef.id: .multiSelection(["Bug", "Self"]),
                 effortDef.id: .number(5)
             ]
         )
@@ -85,6 +85,22 @@ final class TaskBoardViewModel: ObservableObject {
         self.allCards = [card1, card2, card3]
     }
     
+    func addNewCard(_ card: TaskCard) {
+        allCards.append(card)
+    }
+    
+    func updateProperty(for cardID: UUID, definitionID: UUID, newValue: FieldValue) {
+        guard let cardIndex = allCards.firstIndex(where: { $0.id == cardID }) else { return }
+
+        allCards[cardIndex].properties[definitionID] = newValue
+    }
+    
+    func createNewFieldDefinition(name: String, type: FieldType) -> FieldDefinition {
+        let newDefinition = FieldDefinition(name: name, type: type)
+        projectDefinitions.append(newDefinition)
+        return newDefinition
+    }
+    
     private var filteredCards: [TaskCard] {
         if searchText.isEmpty {
             return allCards
@@ -92,8 +108,6 @@ final class TaskBoardViewModel: ObservableObject {
             return allCards.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         }
     }
-    
-    // --- ПЕРЕРОБЛЕНА ЛОГІКА ---
     
     var currentGroupKeys: [any GroupableProperty] {
         // 1. Знаходимо визначення для поточного групування (напр., FieldDefinition з ім'ям "Status")
@@ -108,8 +122,7 @@ final class TaskBoardViewModel: ObservableObject {
         if let status = group as? TaskStatus {
             // Знаходимо визначення поля "Status"
             guard let statusDef = projectDefinitions.first(where: { $0.name == "Status" }) else { return [] }
-            print()
-            // Фільтруємо картки, перевіряючи значення у словнику properties
+
             return filteredCards.filter { card in
                 if case .selection(let option) = card.properties[statusDef.id] {
                     return option == status.rawValue
@@ -121,8 +134,7 @@ final class TaskBoardViewModel: ObservableObject {
               let groupKey = group as? String else {
             return []
         }
-        
-        // 3. Фільтруємо картки.
+
         return filteredCards.filter { card in
             // Знаходимо значення для нашого поля у властивостях картки
             if let fieldValue = card.properties[definition.id] {
@@ -141,7 +153,6 @@ final class TaskBoardViewModel: ObservableObject {
         // Перевіряємо, чи передали нам конкретний енум TaskStatus
         if let newStatus = group as? TaskStatus {
             guard let statusDef = projectDefinitions.first(where: { $0.name == "Status" }) else { return }
-            print(card.properties[statusDef.id])
             withAnimation {
                 // Оновлюємо значення у словнику properties
                 allCards[cardIndex].properties[statusDef.id] = .selection(newStatus.rawValue)

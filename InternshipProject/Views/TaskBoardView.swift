@@ -9,16 +9,14 @@ import SwiftUI
 
 struct TaskBoardView: View {
     @StateObject private var viewModel = TaskBoardViewModel()
-    @StateObject private var viewSettings = ViewSettings()
-    
+
     // Цей State керує перемиканням між режимами (дошка, список і т.д.)
     @State private var currentMode: ViewMode = .byStatus
     
     var body: some View {
         VStack(alignment: .leading){
-            // Toolbar тепер прив'язаний до searchText у ViewModel
             Toolbar(selectedMode: $currentMode, searchText: $viewModel.searchText)
-                .environmentObject(viewModel)
+            
             Picker("Group By", selection: $viewModel.grouping.animation()) {
                 ForEach(TaskBoardViewModel.Grouping.allCases, id: \.self) { mode in
                     Text(mode.rawValue).tag(mode)
@@ -27,6 +25,7 @@ struct TaskBoardView: View {
             .pickerStyle(.segmented)
             .padding(.bottom)
             .padding(.trailing, 10)
+            
             switch currentMode {
             case .byStatus:
                 boardView
@@ -41,10 +40,9 @@ struct TaskBoardView: View {
         .padding(.leading, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
-        .environmentObject(viewSettings) // Передаємо viewSettings усім дочірнім View
+        .environmentObject(viewModel)
     }
     
-    // Я виніс дошку в окремий ViewBuilder для чистоти коду
     @ViewBuilder
     private var boardView: some View {
         VStack {

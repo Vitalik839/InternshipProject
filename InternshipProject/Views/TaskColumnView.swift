@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 
 protocol GroupableProperty: Hashable, Identifiable, Sendable {
     var id: Self { get }
-    var titleColumn: String { get } // Назва для заголовка колонки
+    var titleColumn: String { get }
     var color: Color { get } // Колір для заголовка
 }
 
@@ -26,14 +26,14 @@ extension String: GroupableProperty {
 
 struct TaskColumnView<Group: GroupableProperty>: View {
     let group: Group
-    let cards: [TaskCard] // Змінено з `tasks` на `cards` для відповідності моделі
+    let cards: [TaskCard]
     let projectDefinitions: [FieldDefinition] // Передаємо визначення для TaskCardView
     let visibleCardPropertyIDs: Set<UUID>
-    let columnColor: Color // Колір для колонки
+    let columnColor: Color
     let onTaskDropped: (TaskCard, Group) -> Void
 
     @State private var isTargeted: Bool = false
-    @EnvironmentObject var viewSettings: ViewSettings
+    @EnvironmentObject var viewModel: TaskBoardViewModel
 
     var body: some View {
         VStack (alignment: .leading, spacing: 0){
@@ -45,13 +45,12 @@ struct TaskColumnView<Group: GroupableProperty>: View {
                     TaskCardView(card: card, projectDefinitions: projectDefinitions,
                     visiblePropertyIDs: visibleCardPropertyIDs)
                         .draggable(card)
-                        .environmentObject(viewSettings) // ViewSettings все ще потрібен тут
+                        .environmentObject(viewModel)
                 }
             }
             .padding(.bottom)
 
             Button(action: {
-                // Ваша дія для створення нового завдання
             }) {
                 HStack {
                     Image(systemName: "plus")

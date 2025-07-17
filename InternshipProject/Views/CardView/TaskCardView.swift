@@ -11,8 +11,9 @@ struct TaskCardView: View {
     let card: TaskCard
     let projectDefinitions: [FieldDefinition] // Шаблони полів з проекту
     let visiblePropertyIDs: Set<UUID>
+    @EnvironmentObject var viewModel: TaskBoardViewModel
     
-    // Можна знайти визначення поля "Status" для кольору картки
+    //  визначення поля "Status" для кольору картки
     private var statusValue: FieldValue? {
         // Знаходимо ID поля "Status" у визначеннях проекту
         guard let statusDefinitionID = projectDefinitions.first(where: { $0.name == "Status" })?.id else {
@@ -29,9 +30,9 @@ struct TaskCardView: View {
         }
         
         switch option {
-        case "To Do":
+        case "Not started":
             return Color("taskNotStarted")
-        case "In Progress":
+        case "In progress":
             return Color("taskInProgress")
         case "Done":
             return Color("taskDone")
@@ -54,7 +55,10 @@ struct TaskCardView: View {
             // Динамічно відображаємо всі інші властивості
             ForEach(projectDefinitions.filter { visiblePropertyIDs.contains($0.id) }) { definition in
                 if definition.name != "Status", let value = card.properties[definition.id] {
-                    PropertyDisplayView(definition: definition, value: value)
+                    PropertyDisplayView(cardID: card.id,
+                                        definition: definition,
+                                        value: value)
+                    .environmentObject(viewModel)
                 }
             }
         }

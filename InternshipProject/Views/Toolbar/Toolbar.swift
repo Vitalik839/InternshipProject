@@ -13,13 +13,13 @@ struct Toolbar: View {
     //@Binding var filter: TaskFilter
     
     @EnvironmentObject var viewSettings: TaskBoardViewModel
-
+    
     @State private var showViewModePicker = false
     @State private var isSearching = false
     @State private var showFilterSheet = false
     @State private var showPropertiesMenu = false
     @FocusState private var isSearchFieldFocused: Bool
-    
+    @State private var showCreateCardSheet = false
     
     var body: some View {
         Text("Tasks Tracker")
@@ -53,7 +53,6 @@ struct Toolbar: View {
                 Button {
                     withAnimation(.easeOut(duration: 0.2)) {
                         isSearching = true
-                        // ✅ Змушуємо клавіатуру з'явитися автоматично
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             isSearchFieldFocused = true
                         }
@@ -66,11 +65,9 @@ struct Toolbar: View {
                 
                 
             } else {
-                // ✅ Групуємо поле і кнопку "х" для кращої верстки
                 HStack(spacing: 8) {
                     TextField("Search tasks…", text: $searchText)
                         .textFieldStyle(.roundedBorder)
-                    // ✅ Прив'язуємо фокус до поля вводу
                         .focused($isSearchFieldFocused)
                         .onSubmit {
                             isSearchFieldFocused = false // Ховаємо клавіатуру
@@ -90,7 +87,6 @@ struct Toolbar: View {
                 .transition(.asymmetric(insertion: AnyTransition.opacity, removal: .opacity))
             }
             
-            // Заглушки для фільтрації / налаштувань
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .foregroundColor(.gray)
             Button {
@@ -103,7 +99,9 @@ struct Toolbar: View {
                 PropertiesMenuView().environmentObject(viewSettings)
             }
             
-            Button(action: {}) {
+            Button(action: {
+                showCreateCardSheet = true
+            }) {
                 Image(systemName: "plus")
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -111,19 +109,20 @@ struct Toolbar: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
             }
-            
-            
         }
         .padding(.vertical, 8)
         .padding(.trailing, 10)
         .background(.bg)
-        .environmentObject(viewSettings)
         .sheet(isPresented: $showViewModePicker) {
             ModeSelection(
                 selectedMode: $selectedMode,
                 isPresented: $showViewModePicker
             )
         }
+        .sheet(isPresented: $showCreateCardSheet) {
+            CreateTask(viewModel: viewSettings)
+        }
+        .environmentObject(viewSettings)
     }
 }
 
@@ -134,7 +133,7 @@ struct Toolbar: View {
 struct ToolbarPreviewWrapper: View {
     @State private var currentMode: ViewMode = .byStatus
     @State private var currentText: String = ""
-
+    
     var body: some View {
         Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(TaskBoardViewModel())
     }

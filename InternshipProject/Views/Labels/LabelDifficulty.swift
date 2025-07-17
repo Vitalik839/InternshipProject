@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct LabelDifficulty: View {
-    @State var difficulty: Difficulty
-    @StateObject private var viewModel = TaskBoardViewModel()
+    @Binding var difficulty: Difficulty
+
     var body: some View {
         Menu {
             ForEach(Difficulty.allCases, id: \.self) { level in

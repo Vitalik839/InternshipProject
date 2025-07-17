@@ -15,7 +15,8 @@ enum FieldValue: Codable, Hashable {
     case boolean(Bool)
     case date(Date)
     case url(URL?)
-    case selection(String?) // Зберігає обрану опцію зі списку
+    case selection(String?)
+    case multiSelection([String])
 }
 
 enum FieldType: String, Codable, CaseIterable {
@@ -25,6 +26,7 @@ enum FieldType: String, Codable, CaseIterable {
     case date
     case url
     case selection
+    case multiSelection
 }
 
 // Ця структура визначає "креслення" для кастомного поля.

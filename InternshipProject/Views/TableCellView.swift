@@ -22,7 +22,7 @@ struct TableCellView: View {
             if let value = value {
                 // Якщо значення існує, використовуємо наш PropertyDisplayView,
                 // який вже вміє гарно показувати всі типи даних.
-                PropertyDisplayView(definition: definition, value: value)
+                PropertyDisplayView(cardID: card.id, definition: definition, value: value)
             } else {
                 // Якщо у картки немає такого поля, комірка буде порожньою.
                 Spacer()
