@@ -57,11 +57,8 @@ struct PropertyDisplayView: View {
                 Text(date.formatted(date: .abbreviated, time: .omitted))
                     .font(.callout)
             case .url(let url):
-                if let url = url {
-                    Text(url.host ?? "Link")
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                }
+                URLPreview(url: url, style: .compact)
+
             case .multiSelection(let tags):
                 if tags.isEmpty {
                     Text("Empty").foregroundColor(.gray)

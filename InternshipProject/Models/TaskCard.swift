@@ -29,8 +29,6 @@ enum FieldType: String, Codable, CaseIterable {
     case multiSelection
 }
 
-// Ця структура визначає "креслення" для кастомного поля.
-// Наприклад: { name: "Priority", type: .selection, options: ["High", "Medium", "Low"] }
 struct FieldDefinition: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String

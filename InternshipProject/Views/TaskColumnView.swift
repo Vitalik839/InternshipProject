@@ -11,11 +11,11 @@ import UniformTypeIdentifiers
 protocol GroupableProperty: Hashable, Identifiable, Sendable {
     var id: Self { get }
     var titleColumn: String { get }
-    var color: Color { get } // Колір для заголовка
+    var color: Color { get }
 }
 
 extension GroupableProperty {
-    public var id: Self { self } // ID - це саме значення
+    public var id: Self { self }
 }
 
 extension String: @retroactive Identifiable {}
@@ -27,7 +27,7 @@ extension String: GroupableProperty {
 struct TaskColumnView<Group: GroupableProperty>: View {
     let group: Group
     let cards: [TaskCard]
-    let projectDefinitions: [FieldDefinition] // Передаємо визначення для TaskCardView
+    let projectDefinitions: [FieldDefinition]
     let visibleCardPropertyIDs: Set<UUID>
     let columnColor: Color
     let onTaskDropped: (TaskCard, Group) -> Void

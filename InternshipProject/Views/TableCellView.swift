@@ -11,20 +11,15 @@ struct TableCellView: View {
     let card: TaskCard
     let definition: FieldDefinition
     
-    // Ширина колонки, може бути налаштована
     private let columnWidth: CGFloat = 180
     
     var body: some View {
-        // Знаходимо значення для цього поля у картці
         let value = card.properties[definition.id]
         
         VStack {
             if let value = value {
-                // Якщо значення існує, використовуємо наш PropertyDisplayView,
-                // який вже вміє гарно показувати всі типи даних.
                 PropertyDisplayView(cardID: card.id, definition: definition, value: value)
             } else {
-                // Якщо у картки немає такого поля, комірка буде порожньою.
                 Spacer()
             }
         }

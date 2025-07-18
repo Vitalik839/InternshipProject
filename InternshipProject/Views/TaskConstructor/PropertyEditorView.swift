@@ -12,9 +12,8 @@ struct PropertyEditorView: View {
     @Binding var value: FieldValue?
     
     var body: some View {
-        HStack {
+        HStack (alignment: .top, spacing: 10){
             Image(systemName: "circle.fill")
-                .font(.caption)
                 .foregroundColor(.gray)
             Text(definition.name)
             
@@ -39,7 +38,7 @@ struct PropertyEditorView: View {
             
         }
     }
-    // залежить від типу поля
+
     @ViewBuilder
     private var genericPropertyEditor: some View {
         switch definition.type {
@@ -62,9 +61,8 @@ struct PropertyEditorView: View {
             } else {
                 Text("Empty").foregroundColor(.gray)
             }
-            // Можна додати .onTapGesture для показу DatePicker
             
-        case .selection: // Загальний вибір для будь-яких інших полів
+        case .selection:
             Menu {
                 ForEach(definition.selectionOptions ?? [], id: \.self) { option in
                     Button(option) {
@@ -80,17 +78,22 @@ struct PropertyEditorView: View {
             }
             
         case .url:
-            TextField("example.com", text: urlBinding)
-                .multilineTextAlignment(.trailing)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
+            VStack(alignment: .trailing) {
+                TextField("https://example.com", text: urlBinding)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.URL)
+                
+                if let url = URL(string: urlBinding.wrappedValue) {
+                    URLPreview(url: url, style: .large)
+                        .padding(.top, 4)
+                }
+            }
             
-        case .multiSelection: // Загальний вибір для будь-яких інших полів
+        case .multiSelection:
             Text(multiSelectionBinding.wrappedValue.joined(separator: ", "))
                 .lineLimit(1)
         }
     }
-    // для зручної прив'язки до enum FieldValue
     
     private var textBinding: Binding<String> {
         Binding<String>(

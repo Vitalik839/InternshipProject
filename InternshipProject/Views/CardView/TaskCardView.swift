@@ -52,7 +52,6 @@ struct TaskCardView: View {
             }
             .padding(.bottom, 6)
             
-            // Динамічно відображаємо всі інші властивості
             ForEach(projectDefinitions.filter { visiblePropertyIDs.contains($0.id) }) { definition in
                 if definition.name != "Status", let value = card.properties[definition.id] {
                     PropertyDisplayView(cardID: card.id,
@@ -64,7 +63,7 @@ struct TaskCardView: View {
         }
         .padding()
         .frame(width: 280, alignment: .leading)
-        .background(backgroundColor) // Використовуємо динамічний колір
+        .background(backgroundColor)
         .cornerRadius(16)
     }
 }

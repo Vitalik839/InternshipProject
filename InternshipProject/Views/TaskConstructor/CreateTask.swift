@@ -38,15 +38,13 @@ struct CreateTask: View {
                     .padding(.bottom)
                     
                     ForEach(addedDefinitions) { definition in
-                        // Використовуємо наш універсальний редактор
                         PropertyEditorView(
                             definition: definition,
                             value: $newCard.properties[definition.id]
                         )
                         Divider().background(Color.gray.opacity(0.5))
                     }
-                    
-                    // --- Кнопка "Add Property" ---
+
                     Button(action: { showAddPropertySheet = true }) {
                         HStack {
                             Image(systemName: "plus")
@@ -80,13 +78,11 @@ struct CreateTask: View {
                     allDefinitions: viewModel.projectDefinitions,
                     addedDefinitionIDs: addedDefinitions.map { $0.id },
                     onSelect: { selectedDefinition in
-                        // Додаємо обрану властивість до картки
                         addProperty(definition: selectedDefinition)
                     },
                     onCreateNewProperty: { name, type in
                         let newDefinition = viewModel.createNewFieldDefinition(name: name, type: type)
                         
-                        // 2. Додаємо це нове поле до нашої поточної картки
                         addProperty(definition: newDefinition)
                     }
                 )
@@ -96,8 +92,7 @@ struct CreateTask: View {
     private func addProperty(definition: FieldDefinition) {
         newCard.properties[definition.id] = getDefaultValue(for: definition.type)
     }
-    
-    /// Повертає значення за замовчуванням для кожного типу поля.
+
     private func getDefaultValue(for type: FieldType) -> FieldValue {
         switch type {
         case .text: return .text("")

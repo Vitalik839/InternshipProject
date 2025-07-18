@@ -17,7 +17,6 @@ struct AllTasksView: View {
     private let columnWidth: CGFloat = 180
 
     private var visibleDefinitions: [FieldDefinition] {
-        // Створюємо фіктивне визначення для "Title", щоб він завжди був у списку
         let titleDefinition = FieldDefinition(name: "Title", type: .text)
         
         // Фільтруємо основні визначення і сортуємо їх
@@ -58,7 +57,6 @@ struct AllTasksView: View {
                     
                     Rectangle().frame(height: borderWidth).foregroundColor(borderColor)
                     
-                    // --- Рядки таблиці, які тепер теж динамічні ---
                     ForEach(viewModel.allCards) { card in
                         HStack(spacing: 0) {
                             ForEach(visibleDefinitions) { definition in
