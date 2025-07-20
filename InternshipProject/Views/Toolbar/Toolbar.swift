@@ -22,7 +22,7 @@ struct Toolbar: View {
     @State private var showCreateCardSheet = false
     
     var body: some View {
-        Text("Tasks Tracker")
+        Text("\(viewSettings.project.name)")
             .font(.title)
             .fontWeight(.bold)
             .foregroundStyle(.white)
@@ -126,15 +126,15 @@ struct Toolbar: View {
     }
 }
 
-#Preview {
-    ToolbarPreviewWrapper()
-}
-
-struct ToolbarPreviewWrapper: View {
-    @State private var currentMode: ViewMode = .byStatus
-    @State private var currentText: String = ""
-    
-    var body: some View {
-        Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(TaskBoardViewModel())
-    }
-}
+//#Preview {
+//    ToolbarPreviewWrapper()
+//}
+//
+//struct ToolbarPreviewWrapper: View {
+//    @State private var currentMode: ViewMode = .byStatus
+//    @State private var currentText: String = ""
+//    
+//    var body: some View {
+//        Toolbar(selectedMode: $currentMode, searchText: $currentText).environmentObject(TaskBoardViewModel())
+//    }
+//}

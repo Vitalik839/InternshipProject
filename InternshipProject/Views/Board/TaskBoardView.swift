@@ -8,16 +8,20 @@
 import SwiftUI
 
 struct TaskBoardView: View {
-    @StateObject private var viewModel = TaskBoardViewModel()
-
-    // Цей State керує перемиканням між режимами (дошка, список і т.д.)
+    @Binding var project: Project
+    @StateObject private var boardLogic: TaskBoardViewModel
+    
+    init(project: Binding<Project>) {
+        self._project = project
+        self._boardLogic = StateObject(wrappedValue: TaskBoardViewModel(project: project.wrappedValue))
+    }
     @State private var currentMode: ViewMode = .byStatus
     
     var body: some View {
         VStack(alignment: .leading){
-            Toolbar(selectedMode: $currentMode, searchText: $viewModel.searchText)
-            
-            Picker("Group By", selection: $viewModel.grouping.animation()) {
+            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
+                .environmentObject(boardLogic)
+            Picker("Group By", selection: $boardLogic.grouping.animation()) {
                 ForEach(TaskBoardViewModel.Grouping.allCases, id: \.self) { mode in
                     Text(mode.rawValue).tag(mode)
                 }
@@ -30,7 +34,7 @@ struct TaskBoardView: View {
             case .byStatus:
                 boardView
             case .all:
-                AllTasksView(viewModel: viewModel)
+                AllTasksView(viewModel: boardLogic)
             case .myTasks:
                 Text("My Tasks View").foregroundStyle(.white)
             case .checklist:
@@ -40,7 +44,7 @@ struct TaskBoardView: View {
         .padding(.leading, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
-        .environmentObject(viewModel)
+        .environmentObject(boardLogic)
     }
     
     @ViewBuilder
@@ -51,12 +55,12 @@ struct TaskBoardView: View {
                     ForEach(TaskStatus.allCases, id: \.self) { status in
                         TaskColumnView(
                             group: status,
-                            cards: viewModel.cards(for: status),
-                            projectDefinitions: viewModel.projectDefinitions,
-                            visibleCardPropertyIDs: viewModel.visibleCardPropertyIDs,
+                            cards: boardLogic.cards(for: status),
+                            projectDefinitions: boardLogic.projectDefinitions,
+                            visibleCardPropertyIDs: boardLogic.visibleCardPropertyIDs,
                             columnColor: color(for: status),
                             onTaskDropped: { droppedCard, newGroup in
-                                viewModel.handleDrop(of: droppedCard, on: newGroup)
+                                boardLogic.handleDrop(of: droppedCard, on: newGroup)
                             }
                         ).frame(maxHeight: .infinity, alignment: .top)
                     }
@@ -70,7 +74,7 @@ struct TaskBoardView: View {
         guard let groupKey = group as? String else { return .gray }
         
         // Використовуємо енуми зі старих моделей для отримання кольорів
-        switch viewModel.grouping {
+        switch boardLogic.grouping {
         case .byStatus:
             return TaskStatus(rawValue: groupKey)?.colorTask ?? .gray
         case .byDifficulty:
@@ -82,6 +86,6 @@ struct TaskBoardView: View {
     }
 }
 
-#Preview {
-    TaskBoardView()
-}
+//#Preview {
+//    TaskBoardView()
+//}

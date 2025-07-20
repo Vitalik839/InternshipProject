@@ -7,8 +7,9 @@
 
 import Foundation
 
-struct Project {
-    let id: UUID
+struct Project: Identifiable, Codable, Hashable {
+    let id: UUID = UUID()
     var name: String
-    var tasks: [TaskCard] = []
+    var fieldDefinitions: [FieldDefinition]
+    var cards: [TaskCard] = []
 }

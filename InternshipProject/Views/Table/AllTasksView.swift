@@ -20,7 +20,7 @@ struct AllTasksView: View {
         let titleDefinition = FieldDefinition(name: "Title", type: .text)
         
         // Фільтруємо основні визначення і сортуємо їх
-        let filtered = viewModel.projectDefinitions
+        let filtered = viewModel.project.fieldDefinitions
             .filter { viewModel.visibleDefinitionIDs.contains($0.id) }
             .sorted { $0.name < $1.name }
             
@@ -57,7 +57,7 @@ struct AllTasksView: View {
                     
                     Rectangle().frame(height: borderWidth).foregroundColor(borderColor)
                     
-                    ForEach(viewModel.allCards) { card in
+                    ForEach(viewModel.project.cards) { card in
                         HStack(spacing: 0) {
                             ForEach(visibleDefinitions) { definition in
                                 if definition.name == "Title" {
@@ -82,6 +82,6 @@ struct AllTasksView: View {
         .foregroundStyle(.white)
     }
 }
-#Preview {
-    AllTasksView(viewModel: TaskBoardViewModel())
-}
+//#Preview {
+//    AllTasksView(viewModel: TaskBoardViewModel())
+//}

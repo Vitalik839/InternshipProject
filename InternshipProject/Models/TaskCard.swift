@@ -33,7 +33,7 @@ struct FieldDefinition: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
     var type: FieldType
-    var selectionOptions: [String]? // Тільки для типу .selection
+    var selectionOptions: [String]?
 }
 
 struct TaskCard: Identifiable, Hashable, Codable {
