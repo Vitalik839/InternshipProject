@@ -12,7 +12,7 @@ struct Toolbar: View {
     @Binding var searchText: String
     //@Binding var filter: TaskFilter
     
-    @EnvironmentObject var viewSettings: TaskBoardViewModel
+    @EnvironmentObject var viewSettings: CardViewModel
     
     @State private var showViewModePicker = false
     @State private var isSearching = false
@@ -120,7 +120,7 @@ struct Toolbar: View {
             )
         }
         .sheet(isPresented: $showCreateCardSheet) {
-            CreateTask(viewModel: viewSettings)
+            CreateCard(viewModel: viewSettings)
         }
         .environmentObject(viewSettings)
     }

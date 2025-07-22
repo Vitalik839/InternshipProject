@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-struct AllTasksView: View {
-    @ObservedObject var viewModel: TaskBoardViewModel
+struct AllCardsView: View {
+    @ObservedObject var viewModel: CardViewModel
 
     // Константи залишаються ті ж самі
     private let borderWidth: CGFloat = 1
@@ -21,7 +21,7 @@ struct AllTasksView: View {
         
         // Фільтруємо основні визначення і сортуємо їх
         let filtered = viewModel.project.fieldDefinitions
-            .filter { viewModel.visibleDefinitionIDs.contains($0.id) }
+            .filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
             .sorted { $0.name < $1.name }
             
         return [titleDefinition] + filtered
@@ -39,7 +39,7 @@ struct AllTasksView: View {
                                 
                                 if definition.name != "Title" {
                                     Button(action: {
-                                        viewModel.hideDefinition(id: definition.id)
+                                        viewModel.toggleCardPropertyVisibility(id: definition.id)
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .foregroundColor(.gray)

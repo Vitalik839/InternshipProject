@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PropertyDisplayView: View {
-    @EnvironmentObject var viewModel: TaskBoardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
     
     let cardID: UUID
     let definition: FieldDefinition

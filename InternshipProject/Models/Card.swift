@@ -36,19 +36,22 @@ struct FieldDefinition: Identifiable, Codable, Hashable {
     var selectionOptions: [String]?
 }
 
-struct TaskCard: Identifiable, Hashable, Codable {
+struct Card: Identifiable, Hashable, Codable {
     var id: UUID
     var title: String
     
     // Ключ - це `id` з `FieldDefinition`, а значення - це дані, введені користувачем.
     var properties: [UUID: FieldValue]
 }
-extension TaskCard: Transferable {
+extension Card: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .taskCard)
     }
 }
 
+extension UUID: Identifiable {
+    public var id: UUID { self }
+}
 
 extension UTType {
     static let taskCard = UTType(exportedAs: "com.vitalik.taskcard")

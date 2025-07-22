@@ -11,5 +11,5 @@ struct Project: Identifiable, Codable, Hashable {
     let id: UUID = UUID()
     var name: String
     var fieldDefinitions: [FieldDefinition]
-    var cards: [TaskCard] = []
+    var cards: [Card] = []
 }

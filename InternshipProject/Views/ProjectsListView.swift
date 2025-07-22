@@ -10,7 +10,8 @@ import SwiftUI
 struct ProjectsListView: View {
     @StateObject private var viewModel = ProjectsViewModel()
     @State private var isCreatingProject = false
-    
+    @State private var offsetsToDelete: IndexSet?
+    @State private var showDeleteConfirmation = false
     var body: some View {
         NavigationStack {
             List {
@@ -24,7 +25,10 @@ struct ProjectsListView: View {
                         }
                     }
                 }
-                .onDelete(perform: viewModel.deleteProject)
+                .onDelete { indexSet in
+                    self.offsetsToDelete = indexSet
+                    self.showDeleteConfirmation = true
+                }
             }
             .navigationTitle("Projects")
             .toolbar {
@@ -35,11 +39,25 @@ struct ProjectsListView: View {
                 }
             }
             .sheet(isPresented: $isCreatingProject) {
-                Text("Project Constructor Screen")
+                CreateTemplate(viewModel: viewModel)
             }
             .navigationDestination(for: Project.self) { project in
                 if let index = viewModel.projects.firstIndex(where: { $0.id == project.id }) {
-                    TaskBoardView(project: $viewModel.projects[index])
+                    CardBoardView(project: $viewModel.projects[index])
+                }
+            }
+            .confirmationDialog(
+                "Delete this project?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Project", role: .destructive) {
+                    if let offsets = offsetsToDelete {
+                        viewModel.deleteProject(at: offsets)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    offsetsToDelete = nil
                 }
             }
         }

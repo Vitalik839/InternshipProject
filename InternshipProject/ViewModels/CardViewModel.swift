@@ -9,19 +9,17 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class TaskBoardViewModel: ObservableObject {
+final class CardViewModel: ObservableObject {
     enum Grouping: String, CaseIterable {
         case byStatus = "Status"
         case byDifficulty = "Difficulty"
         case byTag = "Tags"
     }
-    @Published private(set) var project: Project
+    @Published var project: Project
     
     @Published var grouping: Grouping = .byStatus
     @Published var searchText: String = ""
     @Published var projectDefinitions: [FieldDefinition]
-    //@Published var allCards: [TaskCard] = []
-    @Published var visibleDefinitionIDs: Set<UUID> = []
     @Published var visibleCardPropertyIDs: Set<UUID> = []
     
     func toggleCardPropertyVisibility(id: UUID) {
@@ -32,69 +30,14 @@ final class TaskBoardViewModel: ObservableObject {
         }
     }
     
-    func hideDefinition(id: UUID) {
-        visibleDefinitionIDs.remove(id)
-    }
     
     init(project: Project) {
         self.project = project
         self.visibleCardPropertyIDs = Set(project.fieldDefinitions.map { $0.id })
         self.projectDefinitions = project.fieldDefinitions
-        self.visibleDefinitionIDs = Set(project.fieldDefinitions.map { $0.id })
-
-        //self.setupMockData()
     }
     
-//    private func setupMockData() {
-//        let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: TaskStatus.allCases.map(\.rawValue))
-//        let difficultyDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: Difficulty.allCases.map(\.rawValue))
-//        let tagsDef = FieldDefinition(name: "Tags", type: .multiSelection,
-//                                      selectionOptions: ["Polish", "Bug", "Feature Request", "Self", "Tech"])
-//        let effortDef = FieldDefinition(name: "Effort", type: .number)
-//        
-//        // Зберігаємо шаблони у ViewModel
-//        //self.projectDefinitions = [statusDef, difficultyDef, tagsDef, effortDef]
-//        
-//        let card1 = TaskCard(
-//            id: UUID(),
-//            title: "Implement new login screen",
-//            properties: [
-//                statusDef.id: .selection(TaskStatus.inProgress.rawValue),
-//                difficultyDef.id: .selection("Hard"),
-//                tagsDef.id: .multiSelection(["Feature Request"]),
-//                effortDef.id: .number(8)
-//            ]
-//        )
-//        
-//        let card2 = TaskCard(
-//            id: UUID(),
-//            title: "Fix crash on main screen",
-//            properties: [
-//                statusDef.id: .selection(TaskStatus.notStarted.rawValue),
-//                difficultyDef.id: .selection("Medium"),
-//                tagsDef.id: .multiSelection(["Bug", "Self"]),
-//                effortDef.id: .number(5)
-//            ]
-//        )
-//        
-//        let card3 = TaskCard(
-//            id: UUID(),
-//            title: "Refactor networking layer",
-//            properties: [
-//                statusDef.id: .selection(TaskStatus.done.rawValue),
-//                difficultyDef.id: .selection("Hard"),
-//                // Ця картка не має тегу, це нормально
-//            ]
-//        )
-//        self.visibleDefinitionIDs = Set(self.projectDefinitions.map { $0.id })
-//        self.visibleCardPropertyIDs = Set(self.projectDefinitions.map { $0.id })
-//        self.allCards = [card1, card2, card3]
-//        project.cards.append(card1)
-//        project.cards.append(card2)
-//        project.cards.append(card3)
-//    }
-    
-    func addNewCard(_ card: TaskCard) {
+    func addNewCard(_ card: Card) {
         project.cards.append(card)
     }
     
@@ -109,7 +52,7 @@ final class TaskBoardViewModel: ObservableObject {
         return newDefinition
     }
     
-    private var filteredCards: [TaskCard] {
+    private var filteredCards: [Card] {
         if searchText.isEmpty {
             return project.cards
         } else {
@@ -131,7 +74,7 @@ final class TaskBoardViewModel: ObservableObject {
         }
     }
     
-    func cards(for group: any GroupableProperty) -> [TaskCard] {
+    func cards(for group: any GroupableProperty) -> [Card] {
         guard let definition = project.fieldDefinitions.first(where: { $0.name == grouping.rawValue }) else {
             return []
         }
@@ -148,7 +91,7 @@ final class TaskBoardViewModel: ObservableObject {
         }
     }
     
-    func handleDrop(of card: TaskCard, on group: any GroupableProperty) {
+    func handleDrop(of card: Card, on group: any GroupableProperty) {
         guard let cardIndex = project.cards.firstIndex(where: { $0.id == card.id }) else { return }
         guard let definition = project.fieldDefinitions.first(where: { $0.name == grouping.rawValue }) else { return }
         

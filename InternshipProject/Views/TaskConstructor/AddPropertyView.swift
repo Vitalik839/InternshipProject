@@ -8,26 +8,32 @@
 import SwiftUI
 
 struct AddPropertyView: View {
-    let allDefinitions: [FieldDefinition]
-    let addedDefinitionIDs: [UUID]
-    var onSelect: (FieldDefinition) -> Void
-    var onCreateNewProperty: (String, FieldType) -> Void
+    let addedFields: [FieldDefinition]
+    var onComplete: (FieldDefinition) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var newPropertyName: String = ""
     // фільтруємо, щоб не показувати вже додані поля
-    private var availableDefinitions: [FieldDefinition] {
-        allDefinitions.filter { !addedDefinitionIDs.contains($0.id) }
+    private let suggestedDefinitions: [FieldDefinition] = [
+        FieldDefinition(name: "Status", type: .selection, selectionOptions: TaskStatus.allCases.map { $0.rawValue }),
+        FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: Difficulty.allCases.map { $0.rawValue }),
+        FieldDefinition(name: "Tags", type: .multiSelection, selectionOptions: ["Polish", "Bug", "Feature Request"])
+    ]
+    private var availableSuggestedDefinitions: [FieldDefinition] {
+        let addedNames = Set(addedFields.map { $0.name })
+        return suggestedDefinitions.filter { !addedNames.contains($0.name) }
     }
     
     var body: some View {
         NavigationView {
             List {
-                Section("Suggested") {
-                    ForEach(availableDefinitions) { definition in
-                        Button(definition.name) {
-                            onSelect(definition)
-                            dismiss()
+                if !availableSuggestedDefinitions.isEmpty {
+                    Section("Suggested") {
+                        ForEach(availableSuggestedDefinitions) { definition in
+                            Button(definition.name) {
+                                onComplete(definition)
+                                dismiss()
+                            }
                         }
                     }
                 }
@@ -37,7 +43,8 @@ struct AddPropertyView: View {
                 Section("Property Types") {
                     ForEach(FieldType.allCases, id: \.self) { type in
                         Button(action: {
-                            onCreateNewProperty(newPropertyName, type)
+                            let newDefinition = FieldDefinition(name: newPropertyName, type: type)
+                            onComplete(newDefinition)
                             dismiss()
                         }) {
                             Text(type.rawValue.capitalized)

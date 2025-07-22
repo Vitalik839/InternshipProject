@@ -7,11 +7,11 @@
 
 import SwiftUI
 
-struct TaskCardView: View {
-    let card: TaskCard
+struct CardView: View {
+    let card: Card
     let projectDefinitions: [FieldDefinition] // Шаблони полів з проекту
     let visiblePropertyIDs: Set<UUID>
-    @EnvironmentObject var viewModel: TaskBoardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
     
     //  визначення поля "Status" для кольору картки
     private var statusValue: FieldValue? {
@@ -74,7 +74,7 @@ struct TaskCardView: View {
     let tags = FieldDefinition(name: "Tags", type: .selection, selectionOptions: ["Tech", "Polish", "Self"])
     let effortDef = FieldDefinition(name: "Effort", type: .number)
     
-    TaskCardView(card: TaskCard(
+    CardView(card: Card(
         id: UUID(),
         title: "Design new login screen",
         properties: [

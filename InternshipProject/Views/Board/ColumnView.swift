@@ -24,26 +24,34 @@ extension String: GroupableProperty {
     var color: Color { .purple }
 }
 
-struct TaskColumnView<Group: GroupableProperty>: View {
+struct ColumnView<Group: GroupableProperty>: View {
     let group: Group
-    let cards: [TaskCard]
+    let cards: [Card]
     let projectDefinitions: [FieldDefinition]
     let visibleCardPropertyIDs: Set<UUID>
     let columnColor: Color
-    let onTaskDropped: (TaskCard, Group) -> Void
-
+    let onTaskDropped: (Card, Group) -> Void
+    let onCardTapped: (Card) -> Void
+    
+    @State private var selectedCardID: UUID?
     @State private var isTargeted: Bool = false
-    @EnvironmentObject var viewModel: TaskBoardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
 
     var body: some View {
         VStack (alignment: .leading, spacing: 0){
-            LabelTitleColumn(title: group.titleColumn, colorBg: columnColor.opacity(0.8))
-                .padding(.bottom, 8)
-
+            HStack {
+                LabelTitleColumn(title: group.titleColumn, colorBg: columnColor.opacity(0.8))
+                    .padding(.bottom, 8)
+                Spacer()
+                Text("\(cards.count)")
+            }
             VStack(spacing: 8) {
                 ForEach(cards) { card in
-                    TaskCardView(card: card, projectDefinitions: projectDefinitions,
+                    CardView(card: card, projectDefinitions: projectDefinitions,
                     visiblePropertyIDs: visibleCardPropertyIDs)
+                        .onTapGesture {
+                            onCardTapped(card)
+                        }
                         .draggable(card)
                         .environmentObject(viewModel)
                 }
@@ -71,15 +79,22 @@ struct TaskColumnView<Group: GroupableProperty>: View {
         .frame(width: 300)
         .background(isTargeted ? columnColor.opacity(0.5) : columnColor.opacity(0.25))
         .cornerRadius(12)
-        .dropDestination(for: TaskCard.self) { droppedTasks, location in
+        .dropDestination(for: Card.self) { droppedTasks, location in
             guard let droppedTask = droppedTasks.first else { return false }
             onTaskDropped(droppedTask, group)
             return true
         } isTargeted: { isTargeting in
             self.isTargeted = isTargeting
         }
+        .sheet(item: $selectedCardID) { cardID in
+            if let index = viewModel.project.cards.firstIndex(where: { $0.id == cardID }) {
+                CardDetailView(card: $viewModel.project.cards[index])
+                    .environmentObject(viewModel)
+            }
+        }
     }
 }
+
 //#Preview {
 //    TaskColumnView(status: .notStarted, tasks:[TaskCard(title: "Premiere pro Caba Videos Edit", priority: .hard, tags: ["Polish", "Bug"], commentCount: 0, status: .notStarted)])
 //}

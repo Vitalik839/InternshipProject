@@ -30,7 +30,7 @@ class ProjectsViewModel: ObservableObject {
                                       selectionOptions: ["Polish", "Bug", "Feature Request", "Self", "Tech"])
         let effortDef = FieldDefinition(name: "Effort", type: .number)
         
-        let card1 = TaskCard(
+        let card1 = Card(
             id: UUID(),
             title: "Implement new login screen",
             properties: [
@@ -40,7 +40,7 @@ class ProjectsViewModel: ObservableObject {
                 effortDef.id: .number(8)
             ]
         )
-        let card2 = TaskCard(
+        let card2 = Card(
             id: UUID(),
             title: "Fix crash on main screen",
             properties: [
@@ -51,7 +51,7 @@ class ProjectsViewModel: ObservableObject {
             ]
         )
         
-        let card3 = TaskCard(
+        let card3 = Card(
             id: UUID(),
             title: "Refactor networking layer",
             properties: [

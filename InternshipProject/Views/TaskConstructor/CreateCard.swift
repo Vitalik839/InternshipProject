@@ -7,21 +7,17 @@
 
 import SwiftUI
 
-struct CreateTask: View {
-    @ObservedObject var viewModel: TaskBoardViewModel
+struct CreateCard: View {
+    @ObservedObject var viewModel: CardViewModel
     @Environment(\.dismiss) private var dismiss
     
-    @State private var newCard = TaskCard(id: UUID(), title: "", properties: [:])
+    @State private var newCard = Card(id: UUID(), title: "", properties: [:])
     
     @State private var showDatePicker = false
     @State private var showAddPropertySheet = false
     
-    let widthFrameLabel: CGFloat = 120
-    
     private var addedDefinitions: [FieldDefinition] {
         viewModel.projectDefinitions
-            .filter { newCard.properties.keys.contains($0.id) }
-            .sorted { $0.name < $1.name }
     }
     
     var body: some View {
@@ -70,20 +66,15 @@ struct CreateTask: View {
                         viewModel.addNewCard(newCard)
                         dismiss()
                     }
-                    .disabled(newCard.title.isEmpty) // Кнопка неактивна без заголовка
+                    .disabled(newCard.title.isEmpty)
                 }
             }
             .sheet(isPresented: $showAddPropertySheet) {
                 AddPropertyView(
-                    allDefinitions: viewModel.projectDefinitions,
-                    addedDefinitionIDs: addedDefinitions.map { $0.id },
-                    onSelect: { selectedDefinition in
-                        addProperty(definition: selectedDefinition)
-                    },
-                    onCreateNewProperty: { name, type in
-                        let newDefinition = viewModel.createNewFieldDefinition(name: name, type: type)
-                        
-                        addProperty(definition: newDefinition)
+                    addedFields: addedDefinitions,
+                    onComplete: { selectedDefinition in
+                        viewModel.projectDefinitions.append(selectedDefinition)
+                        //addProperty(definition: selectedDefinition)
                     }
                 )
             }
@@ -109,5 +100,5 @@ struct CreateTask: View {
 
 
 //#Preview {
-//    CreateTask(viewModel: TaskBoardViewModel(), onSave: TaskCard { _ in }-> Void)
+//    CreateCard(viewModel: TaskBoardViewModel(), onSave: TaskCard { _ in }-> Void)
 //}

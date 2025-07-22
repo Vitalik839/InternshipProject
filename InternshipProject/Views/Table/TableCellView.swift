@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TableCellView: View {
-    let card: TaskCard
+    let card: Card
     let definition: FieldDefinition
     
     private let columnWidth: CGFloat = 180

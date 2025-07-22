@@ -8,13 +8,13 @@
 import SwiftUI
 
 struct PropertiesMenuView: View {
-    @EnvironmentObject var viewModel: TaskBoardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
     private var shownProperties: [FieldDefinition] {
-        viewModel.project.fieldDefinitions.filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
+        viewModel.projectDefinitions.filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
     }
     
     private var hiddenProperties: [FieldDefinition] {
-        viewModel.project.fieldDefinitions.filter { !viewModel.visibleCardPropertyIDs.contains($0.id) }
+        viewModel.projectDefinitions.filter { !viewModel.visibleCardPropertyIDs.contains($0.id) }
     }
     var body: some View {
         NavigationView {

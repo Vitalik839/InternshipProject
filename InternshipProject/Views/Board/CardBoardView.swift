@@ -7,22 +7,23 @@
 
 import SwiftUI
 
-struct TaskBoardView: View {
+struct CardBoardView: View {
     @Binding var project: Project
-    @StateObject private var boardLogic: TaskBoardViewModel
+    @StateObject private var boardLogic: CardViewModel
     
     init(project: Binding<Project>) {
         self._project = project
-        self._boardLogic = StateObject(wrappedValue: TaskBoardViewModel(project: project.wrappedValue))
+        self._boardLogic = StateObject(wrappedValue: CardViewModel(project: project.wrappedValue))
     }
     @State private var currentMode: ViewMode = .byStatus
-    
+    @State private var selectedCardID: UUID?
+
     var body: some View {
         VStack(alignment: .leading){
             Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
                 .environmentObject(boardLogic)
             Picker("Group By", selection: $boardLogic.grouping.animation()) {
-                ForEach(TaskBoardViewModel.Grouping.allCases, id: \.self) { mode in
+                ForEach(CardViewModel.Grouping.allCases, id: \.self) { mode in
                     Text(mode.rawValue).tag(mode)
                 }
             }
@@ -34,7 +35,7 @@ struct TaskBoardView: View {
             case .byStatus:
                 boardView
             case .all:
-                AllTasksView(viewModel: boardLogic)
+                AllCardsView(viewModel: boardLogic)
             case .myTasks:
                 Text("My Tasks View").foregroundStyle(.white)
             case .checklist:
@@ -45,6 +46,15 @@ struct TaskBoardView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
         .environmentObject(boardLogic)
+        .onChange(of: boardLogic.project) { _, newProjectState in
+            self.project = newProjectState
+        }
+        .sheet(item: $selectedCardID) { cardID in
+            if let index = boardLogic.project.cards.firstIndex(where: { $0.id == cardID }) {
+                CardDetailView(card: $boardLogic.project.cards[index])
+                    .environmentObject(boardLogic)
+            }
+        }
     }
     
     @ViewBuilder
@@ -53,7 +63,7 @@ struct TaskBoardView: View {
             ScrollView([.vertical, .horizontal], showsIndicators: false) {
                 HStack(alignment: .top, spacing: 8) {
                     ForEach(TaskStatus.allCases, id: \.self) { status in
-                        TaskColumnView(
+                        ColumnView(
                             group: status,
                             cards: boardLogic.cards(for: status),
                             projectDefinitions: boardLogic.projectDefinitions,
@@ -61,6 +71,9 @@ struct TaskBoardView: View {
                             columnColor: color(for: status),
                             onTaskDropped: { droppedCard, newGroup in
                                 boardLogic.handleDrop(of: droppedCard, on: newGroup)
+                            },
+                            onCardTapped: { card in
+                                self.selectedCardID = card.id
                             }
                         ).frame(maxHeight: .infinity, alignment: .top)
                     }
