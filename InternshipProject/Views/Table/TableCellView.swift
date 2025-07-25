@@ -17,10 +17,12 @@ struct TableCellView: View {
         let value = card.properties[definition.id]
         
         VStack {
-            if let value = value {
-                PropertyDisplayView(cardID: card.id, definition: definition, value: value)
-            } else {
-                Spacer()
+            if !card.hiddenFieldIDs.contains(definition.id) {
+                if let value = value {
+                    PropertyDisplayView(cardID: card.id, definition: definition, value: value)
+                } else {
+                    Spacer()
+                }
             }
         }
         .padding(.horizontal, 8)

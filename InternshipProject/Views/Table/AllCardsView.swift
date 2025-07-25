@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AllCardsView: View {
     @ObservedObject var viewModel: CardViewModel
+    let onCardTapped: (Card) -> Void
 
     // Константи залишаються ті ж самі
     private let borderWidth: CGFloat = 1
@@ -48,7 +49,6 @@ struct AllCardsView: View {
                             }
                             .padding(.horizontal, 8)
                             .frame(width: columnWidth)
-                            
                             Rectangle().frame(width: borderWidth).foregroundColor(borderColor)
                         }
                     }
@@ -72,6 +72,10 @@ struct AllCardsView: View {
                             }
                         }
                         .frame(height: rowHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onCardTapped(card)
+                        }
                         Rectangle().frame(height: borderWidth).foregroundColor(borderColor)
                     }
                 }

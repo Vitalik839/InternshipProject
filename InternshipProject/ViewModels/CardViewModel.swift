@@ -29,7 +29,17 @@ final class CardViewModel: ObservableObject {
             visibleCardPropertyIDs.insert(id)
         }
     }
-    
+    func toggleVisibility(for cardID: UUID, definitionID: UUID) {
+        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else {
+            return
+        }
+        
+        if project.cards[cardIndex].hiddenFieldIDs.contains(definitionID) {
+            project.cards[cardIndex].hiddenFieldIDs.remove(definitionID)
+        } else {
+            project.cards[cardIndex].hiddenFieldIDs.insert(definitionID)
+        }
+    }
     
     init(project: Project) {
         self.project = project
@@ -40,16 +50,40 @@ final class CardViewModel: ObservableObject {
     func addNewCard(_ card: Card) {
         project.cards.append(card)
     }
+    func deleteCard(_ cardToDelete: Card) {
+        project.cards.removeAll { $0.id == cardToDelete.id }
+    }
     
     func updateProperty(for cardID: UUID, definitionID: UUID, newValue: FieldValue) {
         guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
         project.cards[cardIndex].properties[definitionID] = newValue
     }
     
-    func createNewFieldDefinition(name: String, type: FieldType) -> FieldDefinition {
-        let newDefinition = FieldDefinition(name: name, type: type)
-        projectDefinitions.append(newDefinition)
-        return newDefinition
+    func addProperty(to cardID: UUID, with definition: FieldDefinition) {
+        if !project.fieldDefinitions.contains(where: { $0.id == definition.id }) {
+            project.fieldDefinitions.append(definition)
+        }
+        
+        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
+        project.cards[cardIndex].properties[definition.id] = getDefaultValue(for: definition.type)
+    }
+    
+    func removeProperty(from cardID: UUID, with definitionID: UUID) {
+        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
+        
+        project.cards[cardIndex].properties.removeValue(forKey: definitionID)
+    }
+    
+    func getDefaultValue(for type: FieldType) -> FieldValue {
+        switch type {
+        case .text: return .text("")
+        case .number: return .number(0)
+        case .boolean: return .boolean(false)
+        case .date: return .date(Date())
+        case .selection: return .selection(nil)
+        case .multiSelection: return .multiSelection([])
+        case .url: return .url(nil)
+        }
     }
     
     private var filteredCards: [Card] {

@@ -32,7 +32,7 @@ struct ColumnView<Group: GroupableProperty>: View {
     let columnColor: Color
     let onTaskDropped: (Card, Group) -> Void
     let onCardTapped: (Card) -> Void
-    
+
     @State private var selectedCardID: UUID?
     @State private var isTargeted: Bool = false
     @EnvironmentObject var viewModel: CardViewModel

@@ -17,10 +17,13 @@ struct CardBoardView: View {
     }
     @State private var currentMode: ViewMode = .byStatus
     @State private var selectedCardID: UUID?
-
+    @State private var showCreateCardSheet = false
+    @State private var isTargetedForDeletion = false
+    
+    
     var body: some View {
         VStack(alignment: .leading){
-            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
+            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText, showCreateCardSheet: $showCreateCardSheet)
                 .environmentObject(boardLogic)
             Picker("Group By", selection: $boardLogic.grouping.animation()) {
                 ForEach(CardViewModel.Grouping.allCases, id: \.self) { mode in
@@ -35,25 +38,45 @@ struct CardBoardView: View {
             case .byStatus:
                 boardView
             case .all:
-                AllCardsView(viewModel: boardLogic)
+                AllCardsView(viewModel: boardLogic) { card in
+                    self.selectedCardID = card.id
+                }
             case .myTasks:
                 Text("My Tasks View").foregroundStyle(.white)
             case .checklist:
                 Text("Checklist View").foregroundStyle(.white)
             }
+            TrashView(isTargeted: $isTargetedForDeletion)
+                .dropDestination(for: Card.self) { droppedCards, location in
+                    if let card = droppedCards.first {
+                        boardLogic.deleteCard(card)
+                    }
+                    return true
+                } isTargeted: { isTargeting in
+                    isTargetedForDeletion = isTargeting
+                }
         }
         .padding(.leading, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
         .environmentObject(boardLogic)
-        .onChange(of: boardLogic.project) { _, newProjectState in
-            self.project = newProjectState
+        .sheet(isPresented: $showCreateCardSheet) {
+            CreateCard(
+                viewModel: boardLogic,
+                onSave: { newCard in
+                    boardLogic.addNewCard(newCard)
+                    showCreateCardSheet = false
+                }
+            )
         }
         .sheet(item: $selectedCardID) { cardID in
             if let index = boardLogic.project.cards.firstIndex(where: { $0.id == cardID }) {
                 CardDetailView(card: $boardLogic.project.cards[index])
                     .environmentObject(boardLogic)
             }
+        }
+        .onChange(of: boardLogic.project) { _, newProjectState in
+            self.project = newProjectState
         }
     }
     

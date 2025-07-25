@@ -10,6 +10,8 @@ import SwiftUI
 struct Toolbar: View {
     @Binding var selectedMode: ViewMode
     @Binding var searchText: String
+    @Binding var showCreateCardSheet: Bool
+
     //@Binding var filter: TaskFilter
     
     @EnvironmentObject var viewSettings: CardViewModel
@@ -19,7 +21,6 @@ struct Toolbar: View {
     @State private var showFilterSheet = false
     @State private var showPropertiesMenu = false
     @FocusState private var isSearchFieldFocused: Bool
-    @State private var showCreateCardSheet = false
     
     var body: some View {
         Text("\(viewSettings.project.name)")
@@ -118,9 +119,6 @@ struct Toolbar: View {
                 selectedMode: $selectedMode,
                 isPresented: $showViewModePicker
             )
-        }
-        .sheet(isPresented: $showCreateCardSheet) {
-            CreateCard(viewModel: viewSettings)
         }
         .environmentObject(viewSettings)
     }

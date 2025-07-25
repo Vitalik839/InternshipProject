@@ -42,6 +42,7 @@ struct Card: Identifiable, Hashable, Codable {
     
     // Ключ - це `id` з `FieldDefinition`, а значення - це дані, введені користувачем.
     var properties: [UUID: FieldValue]
+    var hiddenFieldIDs: Set<UUID> = []
 }
 extension Card: Transferable {
     static var transferRepresentation: some TransferRepresentation {

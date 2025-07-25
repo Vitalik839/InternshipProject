@@ -10,14 +10,18 @@ import SwiftUI
 struct CreateCard: View {
     @ObservedObject var viewModel: CardViewModel
     @Environment(\.dismiss) private var dismiss
-    
+    var onSave: (Card) -> Void
     @State private var newCard = Card(id: UUID(), title: "", properties: [:])
     
     @State private var showDatePicker = false
     @State private var showAddPropertySheet = false
     
-    private var addedDefinitions: [FieldDefinition] {
-        viewModel.projectDefinitions
+    @State var addedDefinitions: [FieldDefinition]
+    
+    init(viewModel: CardViewModel, onSave: @escaping (Card) -> Void) {
+        self.viewModel = viewModel
+        self.onSave = onSave
+        self._addedDefinitions = State(initialValue: viewModel.project.fieldDefinitions)
     }
     
     var body: some View {
@@ -63,7 +67,7 @@ struct CreateCard: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        viewModel.addNewCard(newCard)
+                        onSave(newCard)
                         dismiss()
                     }
                     .disabled(newCard.title.isEmpty)
@@ -73,29 +77,17 @@ struct CreateCard: View {
                 AddPropertyView(
                     addedFields: addedDefinitions,
                     onComplete: { selectedDefinition in
+                        viewModel.addProperty(to: newCard.id, with: selectedDefinition)
+
+                        if !addedDefinitions.contains(where: { $0.id == selectedDefinition.id }) {
+                            addedDefinitions.append(selectedDefinition)
+                        }
                         viewModel.projectDefinitions.append(selectedDefinition)
-                        //addProperty(definition: selectedDefinition)
                     }
                 )
             }
         }
     }
-    private func addProperty(definition: FieldDefinition) {
-        newCard.properties[definition.id] = getDefaultValue(for: definition.type)
-    }
-
-    private func getDefaultValue(for type: FieldType) -> FieldValue {
-        switch type {
-        case .text: return .text("")
-        case .number: return .number(0)
-        case .boolean: return .boolean(false)
-        case .date: return .date(Date()) // Починаємо з порожньої дати
-        case .selection: return .selection(nil)
-        case .multiSelection: return .multiSelection([])
-        case .url: return .url(nil)
-        }
-    }
-
 }
 
 

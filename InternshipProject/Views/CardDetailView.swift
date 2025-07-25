@@ -16,9 +16,11 @@ struct CardDetailView: View {
     @State private var showAddPropertySheet = false
 
     private var displayedFields: [FieldDefinition] {
-        viewModel.project.fieldDefinitions
-            .filter { card.properties.keys.contains($0.id) }
-            .sorted { $0.name < $1.name }
+        let fieldIDsInCard = card.properties.keys
+        return fieldIDsInCard.compactMap { fieldID in
+            viewModel.project.fieldDefinitions.first { $0.id == fieldID }
+        }
+        .sorted { $0.name < $1.name } // Сортуємо для краси
     }
     
     var body: some View {
@@ -32,10 +34,26 @@ struct CardDetailView: View {
                     Divider()
 
                     ForEach(displayedFields) { definition in
-                        PropertyEditorView(
-                            definition: definition,
-                            value: $card.properties[definition.id]
-                        )
+                        HStack(spacing: 12) {
+                            PropertyEditorView(
+                                definition: definition,
+                                value: $card.properties[definition.id]
+                            )
+                            Button(action: {
+                                viewModel.toggleVisibility(for: card.id, definitionID: definition.id)
+                            }) {
+                                Image(systemName: card.hiddenFieldIDs.contains(definition.id) ? "eye.slash" : "eye")
+                                    .foregroundColor(.gray)
+                            }
+                            .buttonStyle(.plain)
+                            Button(action: {
+                                viewModel.removeProperty(from: card.id, with: definition.id)
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                            }
+                            .buttonStyle(.plain)
+                        }
                         Divider()
                     }
 
@@ -56,8 +74,17 @@ struct CardDetailView: View {
                 }
             }
             .sheet(isPresented: $showAddPropertySheet) {
-                 // Тут використовується існуючий AddPropertyView
-                 // для додавання нових полів до цієї конкретної картки
+                 AddPropertyView(
+                    addedFields: displayedFields,
+                    onComplete: { definition in
+                        if !viewModel.project.fieldDefinitions.contains(where: { $0.id == definition.id }) {
+                            viewModel.project.fieldDefinitions.append(definition)
+                            viewModel.projectDefinitions.append(definition)
+                        }
+                        card.properties[definition.id] = viewModel.getDefaultValue(for: definition.type)
+
+                    }
+                 )
             }
         }
     }
