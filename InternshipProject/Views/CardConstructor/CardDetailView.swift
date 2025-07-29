@@ -20,7 +20,7 @@ struct CardDetailView: View {
         return fieldIDsInCard.compactMap { fieldID in
             viewModel.project.fieldDefinitions.first { $0.id == fieldID }
         }
-        .sorted { $0.name < $1.name } // Сортуємо для краси
+        .sorted { $0.name < $1.name }
     }
     
     var body: some View {
@@ -77,11 +77,10 @@ struct CardDetailView: View {
                  AddPropertyView(
                     addedFields: displayedFields,
                     onComplete: { definition in
-                        if !viewModel.project.fieldDefinitions.contains(where: { $0.id == definition.id }) {
-                            viewModel.project.fieldDefinitions.append(definition)
-                            viewModel.projectDefinitions.append(definition)
-                        }
-                        card.properties[definition.id] = viewModel.getDefaultValue(for: definition.type)
+                        let finalDefinition = viewModel.findOrCreateDefinition(from: definition)
+                        viewModel.addProperty(to: card.id, with: finalDefinition)
+                        viewModel.projectDefinitions.append(finalDefinition)
+
 
                     }
                  )

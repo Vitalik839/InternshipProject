@@ -17,25 +17,23 @@ struct CardBoardView: View {
     }
     @State private var currentMode: ViewMode = .byStatus
     @State private var selectedCardID: UUID?
-    @State private var showCreateCardSheet = false
     @State private var isTargetedForDeletion = false
     
     
     var body: some View {
         VStack(alignment: .leading){
-            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText, showCreateCardSheet: $showCreateCardSheet)
+            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
                 .environmentObject(boardLogic)
-            Picker("Group By", selection: $boardLogic.grouping.animation()) {
-                ForEach(CardViewModel.Grouping.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.bottom)
-            .padding(.trailing, 10)
             
             switch currentMode {
             case .byStatus:
+                Picker("Group By", selection: $boardLogic.groupingFieldID.animation()) {
+                    ForEach(boardLogic.groupableFields) { field in
+                        Text(field.name).tag(field.id as UUID?)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.bottom)
                 boardView
             case .all:
                 AllCardsView(viewModel: boardLogic) { card in
@@ -56,25 +54,15 @@ struct CardBoardView: View {
                     isTargetedForDeletion = isTargeting
                 }
         }
-        .padding(.leading, 10)
+        .padding(.horizontal, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
-        .environmentObject(boardLogic)
-        .sheet(isPresented: $showCreateCardSheet) {
-            CreateCard(
-                viewModel: boardLogic,
-                onSave: { newCard in
-                    boardLogic.addNewCard(newCard)
-                    showCreateCardSheet = false
-                }
-            )
-        }
         .sheet(item: $selectedCardID) { cardID in
             if let index = boardLogic.project.cards.firstIndex(where: { $0.id == cardID }) {
                 CardDetailView(card: $boardLogic.project.cards[index])
-                    .environmentObject(boardLogic)
             }
         }
+        .environmentObject(boardLogic)
         .onChange(of: boardLogic.project) { _, newProjectState in
             self.project = newProjectState
         }
@@ -85,13 +73,13 @@ struct CardBoardView: View {
         VStack {
             ScrollView([.vertical, .horizontal], showsIndicators: false) {
                 HStack(alignment: .top, spacing: 8) {
-                    ForEach(TaskStatus.allCases, id: \.self) { status in
+                    ForEach(boardLogic.currentGroupKeys, id: \.self) { groupKey in
                         ColumnView(
-                            group: status,
-                            cards: boardLogic.cards(for: status),
+                            groupKey: groupKey,
+                            cards: boardLogic.cards(for: groupKey),
                             projectDefinitions: boardLogic.projectDefinitions,
                             visibleCardPropertyIDs: boardLogic.visibleCardPropertyIDs,
-                            columnColor: color(for: status),
+                            columnColor: color(for: groupKey),
                             onTaskDropped: { droppedCard, newGroup in
                                 boardLogic.handleDrop(of: droppedCard, on: newGroup)
                             },
@@ -106,18 +94,18 @@ struct CardBoardView: View {
         }
     }
     
-    private func color(for group: any GroupableProperty) -> Color {
-        guard let groupKey = group as? String else { return .gray }
+    private func color(for groupKey: String) -> Color {        
+        guard let fieldID = boardLogic.groupingFieldID,
+              let definition = boardLogic.project.fieldDefinitions.first(where: { $0.id == fieldID })
+        else { return .gray }
         
-        // Використовуємо енуми зі старих моделей для отримання кольорів
-        switch boardLogic.grouping {
-        case .byStatus:
+        switch definition.name {
+        case "Status":
             return TaskStatus(rawValue: groupKey)?.colorTask ?? .gray
-        case .byDifficulty:
+        case "Difficulty":
             return Difficulty(rawValue: groupKey)?.color ?? .gray
-        case .byTag:
-            // Можна додати логіку для різних кольорів тегів
-            return .blue
+        default:
+            return TaskStatus.notStarted.colorTask
         }
     }
 }

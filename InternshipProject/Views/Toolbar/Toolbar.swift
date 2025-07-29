@@ -10,20 +10,19 @@ import SwiftUI
 struct Toolbar: View {
     @Binding var selectedMode: ViewMode
     @Binding var searchText: String
-    @Binding var showCreateCardSheet: Bool
-
-    //@Binding var filter: TaskFilter
     
-    @EnvironmentObject var viewSettings: CardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
     
+    @State private var showCreateCardSheet = false
     @State private var showViewModePicker = false
     @State private var isSearching = false
     @State private var showFilterSheet = false
     @State private var showPropertiesMenu = false
+    
     @FocusState private var isSearchFieldFocused: Bool
     
     var body: some View {
-        Text("\(viewSettings.project.name)")
+        Text("\(viewModel.project.name)")
             .font(.title)
             .fontWeight(.bold)
             .foregroundStyle(.white)
@@ -49,7 +48,7 @@ struct Toolbar: View {
                 )
             }
             Spacer()
-            // Search icon
+            
             if !isSearching {
                 Button {
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -88,16 +87,24 @@ struct Toolbar: View {
                 .transition(.asymmetric(insertion: AnyTransition.opacity, removal: .opacity))
             }
             
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .foregroundColor(.gray)
+            Button {
+                showFilterSheet = true
+            }
+            label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .foregroundColor(.gray)
+            }
+            
             Button {
                 showPropertiesMenu = true
             } label: {
                 Image(systemName: "slider.horizontal.3")
             }
             .foregroundColor(.gray)
+            
+            
             .sheet(isPresented: $showPropertiesMenu) {
-                PropertiesMenuView().environmentObject(viewSettings)
+                PropertiesMenuView().environmentObject(viewModel)
             }
             
             Button(action: {
@@ -120,7 +127,19 @@ struct Toolbar: View {
                 isPresented: $showViewModePicker
             )
         }
-        .environmentObject(viewSettings)
+        .sheet(isPresented: $showCreateCardSheet) {
+            CreateCard(
+                viewModel: viewModel,
+                onSave: { newCard in
+                    viewModel.addNewCard(newCard)
+                    showCreateCardSheet = false
+                }
+            )
+        }
+        .sheet(isPresented: $showFilterSheet) {
+            FilterMenuView()
+        }
+        .environmentObject(viewModel)
     }
 }
 

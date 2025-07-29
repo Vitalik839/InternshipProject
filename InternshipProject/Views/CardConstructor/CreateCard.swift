@@ -36,15 +36,15 @@ struct CreateCard: View {
                             .font(.title).foregroundColor(.white)
                     }
                     .padding(.bottom)
-                    
                     ForEach(addedDefinitions) { definition in
                         PropertyEditorView(
                             definition: definition,
                             value: $newCard.properties[definition.id]
                         )
                         Divider().background(Color.gray.opacity(0.5))
+                        
                     }
-
+                    
                     Button(action: { showAddPropertySheet = true }) {
                         HStack {
                             Image(systemName: "plus")
@@ -77,12 +77,13 @@ struct CreateCard: View {
                 AddPropertyView(
                     addedFields: addedDefinitions,
                     onComplete: { selectedDefinition in
-                        viewModel.addProperty(to: newCard.id, with: selectedDefinition)
-
+                        //let finalDefinition = viewModel.findOrCreateDefinition(from: selectedDefinition)
+                        //viewModel.addProperty(to: newCard.id, with: selectedDefinition)
                         if !addedDefinitions.contains(where: { $0.id == selectedDefinition.id }) {
                             addedDefinitions.append(selectedDefinition)
                         }
                         viewModel.projectDefinitions.append(selectedDefinition)
+
                     }
                 )
             }

@@ -19,10 +19,6 @@ struct LabelStatus: View {
             }
         } label: {
             HStack {
-                Circle()
-                    .fill(.white)
-                    .frame(width: 8, height: 8)
-                    .padding(.leading)
                 Text(status.rawValue)
                     .font(.headline)
                     .foregroundStyle(.white)

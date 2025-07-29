@@ -6,28 +6,29 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AllCardsView: View {
     @ObservedObject var viewModel: CardViewModel
     let onCardTapped: (Card) -> Void
-
-    // Константи залишаються ті ж самі
+    
     private let borderWidth: CGFloat = 1
     private let borderColor = Color.gray.opacity(0.5)
     private let rowHeight: CGFloat = 44
     private let columnWidth: CGFloat = 180
-
+    
+    // айді картки, над якою перепіщаємо картку, шоб підсвітити верхню ліні, тільки проблема
+    //    з останньою карточкою, треба пофіксити потім
     private var visibleDefinitions: [FieldDefinition] {
         let titleDefinition = FieldDefinition(name: "Title", type: .text)
         
-        // Фільтруємо основні визначення і сортуємо їх
         let filtered = viewModel.project.fieldDefinitions
             .filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
             .sorted { $0.name < $1.name }
-            
+        
         return [titleDefinition] + filtered
     }
-
+    
     var body: some View {
         VStack {
             ScrollView([.horizontal, .vertical], showsIndicators: false) {
@@ -57,7 +58,7 @@ struct AllCardsView: View {
                     
                     Rectangle().frame(height: borderWidth).foregroundColor(borderColor)
                     
-                    ForEach(viewModel.project.cards) { card in
+                    ForEach(viewModel.filteredCards) { card in
                         HStack(spacing: 0) {
                             ForEach(visibleDefinitions) { definition in
                                 if definition.name == "Title" {
@@ -71,6 +72,8 @@ struct AllCardsView: View {
                                 Rectangle().frame(width: borderWidth).foregroundColor(borderColor)
                             }
                         }
+                        .draggable(card)
+                        
                         .frame(height: rowHeight)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -84,6 +87,7 @@ struct AllCardsView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
         .foregroundStyle(.white)
+        
     }
 }
 //#Preview {
