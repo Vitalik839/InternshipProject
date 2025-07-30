@@ -75,6 +75,11 @@ struct CreateTemplate: View {
             }
             .sheet(isPresented: $showAddPropertySheet) {
                 AddPropertyView(
+                    projectFields: [
+                        FieldDefinition(name: "Status", type: .selection, selectionOptions: CardStatus.allCases.map { $0.rawValue }),
+                        FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: CardDifficulty.allCases.map { $0.rawValue }),
+                        FieldDefinition(name: "Tags", type: .multiSelection, selectionOptions: ["Polish", "Bug", "Feature Request"])
+                    ],
                     addedFields: newProject.fieldDefinitions,
                     onComplete: { newDefinition in
                         newProject.fieldDefinitions.append(newDefinition)

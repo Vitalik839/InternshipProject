@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct LabelDifficulty: View {
-    @Binding var difficulty: Difficulty
+    @Binding var difficulty: CardDifficulty
 
     var body: some View {
         Menu {
-            ForEach(Difficulty.allCases, id: \.self) { level in
+            ForEach(CardDifficulty.allCases, id: \.self) { level in
                 Button(action: {
                     difficulty = level
                 }) {

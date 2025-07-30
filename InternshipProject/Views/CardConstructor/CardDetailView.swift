@@ -18,7 +18,7 @@ struct CardDetailView: View {
     private var displayedFields: [FieldDefinition] {
         let fieldIDsInCard = card.properties.keys
         return fieldIDsInCard.compactMap { fieldID in
-            viewModel.project.fieldDefinitions.first { $0.id == fieldID }
+            viewModel.projectDefinitions.first { $0.id == fieldID }
         }
         .sorted { $0.name < $1.name }
     }
@@ -42,7 +42,7 @@ struct CardDetailView: View {
                             Button(action: {
                                 viewModel.toggleVisibility(for: card.id, definitionID: definition.id)
                             }) {
-                                Image(systemName: card.hiddenFieldIDs.contains(definition.id) ? "eye.slash" : "eye")
+                                Image(systemName: card.hiddenFieldIDs.contains(definition.id)  ? "eye.slash" : "eye")
                                     .foregroundColor(.gray)
                             }
                             .buttonStyle(.plain)
@@ -75,12 +75,11 @@ struct CardDetailView: View {
             }
             .sheet(isPresented: $showAddPropertySheet) {
                  AddPropertyView(
+                    projectFields: viewModel.projectDefinitions,
                     addedFields: displayedFields,
                     onComplete: { definition in
                         let finalDefinition = viewModel.findOrCreateDefinition(from: definition)
                         viewModel.addProperty(to: card.id, with: finalDefinition)
-                        viewModel.projectDefinitions.append(finalDefinition)
-
 
                     }
                  )

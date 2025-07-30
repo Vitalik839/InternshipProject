@@ -41,6 +41,7 @@ struct CreateCard: View {
                             definition: definition,
                             value: $newCard.properties[definition.id]
                         )
+                        .environmentObject(viewModel)
                         Divider().background(Color.gray.opacity(0.5))
                         
                     }
@@ -75,14 +76,13 @@ struct CreateCard: View {
             }
             .sheet(isPresented: $showAddPropertySheet) {
                 AddPropertyView(
+                    projectFields: viewModel.projectDefinitions,
                     addedFields: addedDefinitions,
                     onComplete: { selectedDefinition in
-                        //let finalDefinition = viewModel.findOrCreateDefinition(from: selectedDefinition)
-                        //viewModel.addProperty(to: newCard.id, with: selectedDefinition)
                         if !addedDefinitions.contains(where: { $0.id == selectedDefinition.id }) {
                             addedDefinitions.append(selectedDefinition)
                         }
-                        viewModel.projectDefinitions.append(selectedDefinition)
+                        viewModel.addProperty(to: newCard.id, with: selectedDefinition)
 
                     }
                 )

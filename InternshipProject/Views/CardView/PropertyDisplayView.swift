@@ -81,11 +81,11 @@ struct PropertyDisplayView: View {
         }
     }
     
-    private var difficultyBinding: Binding<Difficulty> {
-        Binding<Difficulty>(
+    private var difficultyBinding: Binding<CardDifficulty> {
+        Binding<CardDifficulty>(
             get: {
                 if case .selection(let option) = value,
-                   let difficulty = Difficulty(rawValue: option ?? "") {
+                   let difficulty = CardDifficulty(rawValue: option ?? "") {
                     return difficulty
                 }
                 return .easy // за замовчуванням
@@ -100,11 +100,11 @@ struct PropertyDisplayView: View {
             }
         )
     }
-    private var statusBinding: Binding<TaskStatus> {
-        Binding<TaskStatus>(
+    private var statusBinding: Binding<CardStatus> {
+        Binding<CardStatus>(
             get: {
                 if case .selection(let option) = value,
-                   let status = TaskStatus(rawValue: option ?? "") {
+                   let status = CardStatus(rawValue: option ?? "") {
                     return status
                 }
                 return .notStarted

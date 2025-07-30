@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct LabelStatus: View {
-    @Binding var status: TaskStatus
+    @Binding var status: CardStatus
 
     var body: some View {
         Menu {
-            ForEach(TaskStatus.allCases, id: \.self) { newStatus in
+            ForEach(CardStatus.allCases, id: \.self) { newStatus in
                 Button(newStatus.rawValue) {
                     self.status = newStatus
                 }

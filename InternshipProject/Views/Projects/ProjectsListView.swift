@@ -43,7 +43,7 @@ struct ProjectsListView: View {
             }
             .navigationDestination(for: Project.self) { project in
                 if let index = viewModel.projects.firstIndex(where: { $0.id == project.id }) {
-                    CardBoardView(project: $viewModel.projects[index])
+                    ViewsController(project: $viewModel.projects[index])
                 }
             }
             .confirmationDialog(

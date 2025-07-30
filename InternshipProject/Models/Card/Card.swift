@@ -40,7 +40,6 @@ struct Card: Identifiable, Hashable, Codable {
     var id: UUID
     var title: String
     
-    // Ключ - це `id` з `FieldDefinition`, а значення - це дані, введені користувачем.
     var properties: [UUID: FieldValue]
     var hiddenFieldIDs: Set<UUID> = []
 }
@@ -69,8 +68,7 @@ extension Color {
         var alpha: CGFloat = 0
         
         uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        
-        // Збільшуємо насиченість, обмежуючи значення до 1.0
+
         let newSaturation = min(saturation + amount, 1.0)
 
         return Color(hue: hue, saturation: newSaturation, brightness: brightness, opacity: alpha)

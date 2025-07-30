@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct CardBoardView: View {
+struct ViewsController: View {
     @Binding var project: Project
     @StateObject private var boardLogic: CardViewModel
     
@@ -15,7 +15,7 @@ struct CardBoardView: View {
         self._project = project
         self._boardLogic = StateObject(wrappedValue: CardViewModel(project: project.wrappedValue))
     }
-    @State private var currentMode: ViewMode = .byStatus
+    @State private var currentMode: ViewMode = .byGroup
     @State private var selectedCardID: UUID?
     @State private var isTargetedForDeletion = false
     
@@ -23,10 +23,10 @@ struct CardBoardView: View {
     var body: some View {
         VStack(alignment: .leading){
             Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
-                .environmentObject(boardLogic)
+                .padding(.bottom, 10)
             
             switch currentMode {
-            case .byStatus:
+            case .byGroup:
                 Picker("Group By", selection: $boardLogic.groupingFieldID.animation()) {
                     ForEach(boardLogic.groupableFields) { field in
                         Text(field.name).tag(field.id as UUID?)
@@ -34,15 +34,11 @@ struct CardBoardView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.bottom)
-                boardView
+                BoardView(selectedCardID: $selectedCardID)
             case .all:
                 AllCardsView(viewModel: boardLogic) { card in
                     self.selectedCardID = card.id
                 }
-            case .myTasks:
-                Text("My Tasks View").foregroundStyle(.white)
-            case .checklist:
-                Text("Checklist View").foregroundStyle(.white)
             }
             TrashView(isTargeted: $isTargetedForDeletion)
                 .dropDestination(for: Card.self) { droppedCards, location in
@@ -65,47 +61,6 @@ struct CardBoardView: View {
         .environmentObject(boardLogic)
         .onChange(of: boardLogic.project) { _, newProjectState in
             self.project = newProjectState
-        }
-    }
-    
-    @ViewBuilder
-    private var boardView: some View {
-        VStack {
-            ScrollView([.vertical, .horizontal], showsIndicators: false) {
-                HStack(alignment: .top, spacing: 8) {
-                    ForEach(boardLogic.currentGroupKeys, id: \.self) { groupKey in
-                        ColumnView(
-                            groupKey: groupKey,
-                            cards: boardLogic.cards(for: groupKey),
-                            projectDefinitions: boardLogic.projectDefinitions,
-                            visibleCardPropertyIDs: boardLogic.visibleCardPropertyIDs,
-                            columnColor: color(for: groupKey),
-                            onTaskDropped: { droppedCard, newGroup in
-                                boardLogic.handleDrop(of: droppedCard, on: newGroup)
-                            },
-                            onCardTapped: { card in
-                                self.selectedCardID = card.id
-                            }
-                        ).frame(maxHeight: .infinity, alignment: .top)
-                    }
-                }
-                .padding(.top, 8)
-            }
-        }
-    }
-    
-    private func color(for groupKey: String) -> Color {        
-        guard let fieldID = boardLogic.groupingFieldID,
-              let definition = boardLogic.project.fieldDefinitions.first(where: { $0.id == fieldID })
-        else { return .gray }
-        
-        switch definition.name {
-        case "Status":
-            return TaskStatus(rawValue: groupKey)?.colorTask ?? .gray
-        case "Difficulty":
-            return Difficulty(rawValue: groupKey)?.color ?? .gray
-        default:
-            return TaskStatus.notStarted.colorTask
         }
     }
 }

@@ -44,7 +44,7 @@ struct PropertiesMenuView: View {
             }) {
                 Image(systemName: isVisible ? "eye" : "eye.slash")
             }
-            .buttonStyle(.plain) // Прибирає синій колір кнопки
+            .buttonStyle(.plain)
         }
     }
 }

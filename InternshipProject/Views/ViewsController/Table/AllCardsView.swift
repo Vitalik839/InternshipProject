@@ -30,8 +30,8 @@ struct AllCardsView: View {
     }
     
     var body: some View {
-        VStack {
-            ScrollView([.horizontal, .vertical], showsIndicators: false) {
+        ScrollView(.vertical, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(visibleDefinitions) { definition in

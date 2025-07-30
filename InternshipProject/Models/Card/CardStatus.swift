@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-enum TaskStatus: String, CaseIterable, Codable, Hashable {
+enum CardStatus: String, CaseIterable, Codable, Hashable {
     case notStarted = "Not started"
     case inProgress = "In progress"
     case done = "Done"

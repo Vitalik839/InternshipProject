@@ -7,11 +7,13 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 final class CardViewModel: ObservableObject {
     @Published var project: Project
     
+    @Published var filteredCards: [Card] = []
     @Published var searchText: String = ""
     @Published var projectDefinitions: [FieldDefinition]
     @Published var visibleCardPropertyIDs: Set<UUID> = []
@@ -19,9 +21,56 @@ final class CardViewModel: ObservableObject {
     @Published var activeFilters: [UUID: FilterType] = [:]
     @Published var activeSortRule: SortRule?
 
+    private let dataProcessor = CardDataProcessor()
+    private var cancellables = Set<AnyCancellable>()
+    
+    private lazy var monthYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }()
+    
+    init(project: Project) {
+        self.project = project
+        self.filteredCards = project.cards
+        self.visibleCardPropertyIDs = Set(project.fieldDefinitions.map { $0.id })
+        self.projectDefinitions = project.fieldDefinitions
+        
+        self.groupingFieldID = project.fieldDefinitions.first(where: {
+            $0.type == .selection || $0.type == .multiSelection || $0.type == .date
+                })?.id
+        
+        setupBindings()
+    }
+    
     var groupableFields: [FieldDefinition] {
         project.fieldDefinitions.filter {
             $0.type == .selection || $0.type == .multiSelection  || $0.type == .date
+        }
+    }
+    
+    private func setupBindings() {
+        Publishers.CombineLatest4($project, $searchText, $activeFilters, $activeSortRule)
+            .debounce(for: .milliseconds(200), scheduler: RunLoop.main)
+            .sink { [weak self] (project, search, filters, sortRule) in
+                self?.reloadDisplayedCards()
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func reloadDisplayedCards() {
+        Task {
+            let processedCards = await dataProcessor.processCards(
+                project.cards,
+                searchText: searchText,
+                filters: activeFilters,
+                sortRule: activeSortRule,
+                definitions: projectDefinitions
+            )
+
+            DispatchQueue.main.async {
+                self.filteredCards = processedCards
+            }
         }
     }
     
@@ -32,6 +81,7 @@ final class CardViewModel: ObservableObject {
             visibleCardPropertyIDs.insert(id)
         }
     }
+    
     func toggleVisibility(for cardID: UUID, definitionID: UUID) {
         guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else {
             return
@@ -41,96 +91,6 @@ final class CardViewModel: ObservableObject {
             project.cards[cardIndex].hiddenFieldIDs.remove(definitionID)
         } else {
             project.cards[cardIndex].hiddenFieldIDs.insert(definitionID)
-        }
-    }
-    
-    init(project: Project) {
-        self.project = project
-        self.visibleCardPropertyIDs = Set(project.fieldDefinitions.map { $0.id })
-        self.projectDefinitions = project.fieldDefinitions
-        
-        self.groupingFieldID = project.fieldDefinitions.first(where: {
-            $0.type == .selection || $0.type == .multiSelection || $0.type == .date
-                })?.id
-    }
-    
-    public var filteredCards: [Card] {
-        var cards = project.cards
-        
-        if !searchText.isEmpty {
-            cards = cards.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
-        }
-        
-        guard !activeFilters.isEmpty else { return cards }
-        
-        cards = cards.filter { card in
-            for (fieldID, filter) in activeFilters {
-                let propertyValue = card.properties[fieldID]
-                guard let propertyValue = card.properties[fieldID] else {
-                    return false
-                }
-                if !isCardSatisfyingRule(propertyValue: propertyValue, filter: filter) {
-                    return false
-                }
-            }
-            return true
-        }
-        guard let sortRule = activeSortRule,
-              let sortField = project.fieldDefinitions.first(where: { $0.id == sortRule.fieldID })
-        else {
-            return cards
-        }
-        
-        cards.sort { card1, card2 in
-            let value1 = card1.properties[sortRule.fieldID]
-            let value2 = card2.properties[sortRule.fieldID]
-            
-            let result = compare(value1, and: value2, for: sortField.type)
-            
-            return sortRule.direction == .ascending ? result : !result
-        }
-        
-        return cards
-    }
-    
-    private func isCardSatisfyingRule(propertyValue: FieldValue?, filter: FilterType) -> Bool {
-        if filter == .isNotEmpty {
-            return propertyValue != nil
-        }
-        guard let propertyValue = propertyValue else {
-            return false
-        }
-        
-        switch (filter, propertyValue) {
-            
-        case (.textContains(let searchText), .text(let cardText)):
-            if searchText.isEmpty { return false }
-            return cardText.localizedCaseInsensitiveContains(searchText)
-            
-        case (.numberRange(let start, let end), .number(let cardNum)):
-            let isAfterStart = (start == nil) || (cardNum >= start!)
-            let isBeforeEnd = (end == nil) || (cardNum <= end!)
-            return isAfterStart && isBeforeEnd
-            
-        case (.dateRange(let start, let end), .date(let optionalCardDate)):
-            
-            let isAfterStart = (start == nil) || (Calendar.current.compare(optionalCardDate, to: start!, toGranularity: .day) != .orderedAscending)
-            let isBeforeEnd = (end == nil) || (Calendar.current.compare(optionalCardDate, to: end!, toGranularity: .day) != .orderedDescending)
-            
-            return isAfterStart && isBeforeEnd
-            
-        case (.selectionContains(let selectedOptions), .selection(let cardOption)):
-            guard let cardOption = cardOption else { return false }
-            return selectedOptions.contains(cardOption)
-            
-        case (.selectionContains(let selectedOptions), .multiSelection(let cardTags)):
-            return !Set(cardTags).isDisjoint(with: selectedOptions)
-            
-        case (.isNotEmpty, .url(let url)):
-            return url != nil
-            
-        default:
-            return false
         }
     }
     
@@ -144,30 +104,6 @@ final class CardViewModel: ObservableObject {
     
     func clearAllFilters() {
         activeFilters.removeAll()
-    }
-    
-    private func compare(_ v1: FieldValue?, and v2: FieldValue?, for type: FieldType) -> Bool {
-        if v1 == nil && v2 != nil { return false }
-        if v1 != nil && v2 == nil { return true }
-        guard let v1 = v1, let v2 = v2 else { return false }
-        
-        switch (v1, v2) {
-        case (.text(let t1), .text(let t2)):
-            return t1 < t2
-        case (.number(let n1), .number(let n2)):
-            return n1 < n2
-        case (.date(let d1), .date(let d2)):
-            return d1 < d2
-        case (.selection(let .some(s1)), .selection(let .some(s2))):
-            return s1 < s2
-        case (.url(let .some(url1)), .url(let .some(url2))):
-            return url1.absoluteString < url2.absoluteString
-        case (.boolean(let b1), .boolean(let b2)):
-            return b1 == false && b2 == true
-            
-        default: return false
-            
-        }
     }
     
     func setSort(by fieldID: UUID) {
@@ -185,6 +121,7 @@ final class CardViewModel: ObservableObject {
     func addNewCard(_ card: Card) {
         project.cards.append(card)
     }
+    
     func deleteCard(_ cardToDelete: Card) {
         project.cards.removeAll { $0.id == cardToDelete.id }
     }
@@ -213,18 +150,35 @@ final class CardViewModel: ObservableObject {
     }
     
     func addProperty(to cardID: UUID, with definition: FieldDefinition) {
-        if !project.fieldDefinitions.contains(where: { $0.id == definition.id }) {
-            project.fieldDefinitions.append(definition)
+        if !projectDefinitions.contains(where: { $0.id == definition.id }) {
+            projectDefinitions.append(definition)
         }
-        
+
         guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
         project.cards[cardIndex].properties[definition.id] = getDefaultValue(for: definition.type)
+    }
+    
+    func addOption(to definitionID: UUID, newOption: String) {
+        guard let definitionIndex = project.fieldDefinitions.firstIndex(where: { $0.id == definitionID }) else { return }
+        
+        let currentOptions = project.fieldDefinitions[definitionIndex].selectionOptions ?? []
+        guard !currentOptions.contains(newOption) else { return }
+        
+        project.fieldDefinitions[definitionIndex].selectionOptions?.append(newOption)
     }
     
     func removeProperty(from cardID: UUID, with definitionID: UUID) {
         guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
         
         project.cards[cardIndex].properties.removeValue(forKey: definitionID)
+        
+        let isPropertyUsedElsewhere = project.cards.contains { card in
+            card.id != cardID && card.properties.keys.contains(definitionID)
+        }
+        
+        if !isPropertyUsedElsewhere {
+            projectDefinitions.removeAll { $0.id == definitionID }
+        }
     }
     
     func getDefaultValue(for type: FieldType) -> FieldValue {
@@ -248,7 +202,27 @@ final class CardViewModel: ObservableObject {
             return definition.selectionOptions ?? []
         }
         
-        // групування за датою)
+        else if definition.type == .date {
+            let dates = project.cards.compactMap { card -> Date? in
+                if case .date(let date) = card.properties[fieldID] {
+                    return date
+                }
+                return nil
+            }
+            
+            let calendar = Calendar.current
+            let uniqueMonthYearComponents = Set(dates.map {
+                calendar.dateComponents([.year, .month], from: $0)
+            })
+            
+            let sortedComponents = uniqueMonthYearComponents.sorted {
+                let date1 = calendar.date(from: $0)!
+                let date2 = calendar.date(from: $1)!
+                return date1 < date2
+            }
+            
+            return sortedComponents.map { monthYearFormatter.string(from: calendar.date(from: $0)!) }
+        }
         
         return []
     }
@@ -266,9 +240,8 @@ final class CardViewModel: ObservableObject {
                 case .multiSelection(let tags):
                     return tags.contains(groupKey)
                 case .date(let date):
-                    let calendar = Calendar.current
-                    let year = calendar.component(.year, from: date)
-                    return String(year) == groupKey
+                    let formattedDate = monthYearFormatter.string(from: date)
+                    return formattedDate == groupKey
                 default:
                     return false
                 }

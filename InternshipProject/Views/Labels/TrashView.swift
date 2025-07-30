@@ -13,7 +13,7 @@ struct TrashView: View {
     var body: some View {
         VStack (spacing: 15){
             Image(systemName: "trash.fill")
-                .frame(width: 20, height: 20)
+                .frame(width: 15, height: 15)
                 .font(.title)
                 .foregroundColor(isTargeted ? .red : .white)
             
@@ -27,7 +27,7 @@ struct TrashView: View {
         .cornerRadius(20)
         .scaleEffect(isTargeted ? 1.1 : 1.0)
         .animation(.spring(), value: isTargeted)
-        .padding()
+        .padding(.horizontal)
     }
 }
 

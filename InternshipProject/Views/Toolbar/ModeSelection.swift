@@ -9,9 +9,7 @@ import SwiftUI
 
 enum ViewMode: String, CaseIterable, Identifiable {
     case all = "All Tasks"
-    case byStatus = "By Status"
-    case myTasks = "My Tasks"
-    case checklist = "Checklist"
+    case byGroup = "By Group"
     
     var id: String { self.rawValue }
 }

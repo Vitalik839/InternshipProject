@@ -24,8 +24,8 @@ class ProjectsViewModel: ObservableObject {
     }
 
     private func loadMockProjects() {
-        let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: TaskStatus.allCases.map(\.rawValue))
-        let difficultyDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: Difficulty.allCases.map(\.rawValue))
+        let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: CardStatus.allCases.map(\.rawValue))
+        let difficultyDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: CardDifficulty.allCases.map(\.rawValue))
         let tagsDef = FieldDefinition(name: "Tags", type: .multiSelection,
                                       selectionOptions: ["Polish", "Bug", "Feature Request", "Self", "Tech"])
         let dateDef = FieldDefinition(name: "Due date", type: .date)
@@ -38,8 +38,8 @@ class ProjectsViewModel: ObservableObject {
             id: UUID(),
             title: "Implement new login screen",
             properties: [
-                statusDef.id: .selection(TaskStatus.inProgress.rawValue),
-                difficultyDef.id: .selection(Difficulty.hard.rawValue),
+                statusDef.id: .selection(CardStatus.inProgress.rawValue),
+                difficultyDef.id: .selection(CardDifficulty.hard.rawValue),
                 tagsDef.id: .multiSelection(["Feature Request"]),
                 dateDef.id: .date(formatter.date(from: "2025/08/13")!),
                 textDef.id: .text("Деякий текст")
@@ -49,8 +49,8 @@ class ProjectsViewModel: ObservableObject {
             id: UUID(),
             title: "Fix crash on main screen",
             properties: [
-                statusDef.id: .selection(TaskStatus.notStarted.rawValue),
-                difficultyDef.id: .selection(Difficulty.medium.rawValue),
+                statusDef.id: .selection(CardStatus.notStarted.rawValue),
+                difficultyDef.id: .selection(CardDifficulty.medium.rawValue),
                 tagsDef.id: .multiSelection(["Bug", "Self"]),
                 dateDef.id: .date(formatter.date(from: "2025/10/22")!),
                 textDef.id: .text("Особливий текст")
@@ -61,8 +61,8 @@ class ProjectsViewModel: ObservableObject {
             id: UUID(),
             title: "Refactor networking layer",
             properties: [
-                statusDef.id: .selection(TaskStatus.done.rawValue),
-                difficultyDef.id: .selection(Difficulty.easy.rawValue),
+                statusDef.id: .selection(CardStatus.done.rawValue),
+                difficultyDef.id: .selection(CardDifficulty.easy.rawValue),
                 dateDef.id: .date(formatter.date(from: "2025/04/09")!),
                 textDef.id: .text("Просто текст")
             ]

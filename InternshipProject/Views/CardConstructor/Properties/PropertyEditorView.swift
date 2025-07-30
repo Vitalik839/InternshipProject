@@ -8,8 +8,14 @@
 import SwiftUI
 
 struct PropertyEditorView: View {
+    @EnvironmentObject var viewModel: CardViewModel
+
     let definition: FieldDefinition
     @Binding var value: FieldValue?
+    
+    @State private var showDatePicker = false
+    @State private var isShowingAddOptionAlert = false
+    @State private var newOptionText = ""
     
     var body: some View {
         HStack (alignment: .top, spacing: 10){
@@ -56,10 +62,24 @@ struct PropertyEditorView: View {
                 .frame(width: 50)
             
         case .date:
-            if let date = dateBinding.wrappedValue {
-                Text(date.formatted(date: .abbreviated, time: .omitted))
-            } else {
-                Text("Empty").foregroundColor(.gray)
+            HStack {
+                Text(dateBinding.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Empty")
+                    .foregroundColor(dateBinding.wrappedValue == nil ? .gray : .white)
+            }
+            .popover(isPresented: $showDatePicker) {
+                DatePicker(
+                    "Select Date",
+                    selection: Binding(
+                        get: { dateBinding.wrappedValue ?? Date() },
+                        set: { dateBinding.wrappedValue = $0 }
+                    ),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+            }
+            .onTapGesture {
+                showDatePicker = true
             }
             
         case .selection:
@@ -69,11 +89,30 @@ struct PropertyEditorView: View {
                         value = .selection(option)
                     }
                 }
+
+                Divider()
+                Button(action: { isShowingAddOptionAlert = true }) {
+                    Label("Add New Option", systemImage: "plus")
+                }
+                
             } label: {
                 if case .selection(let selected) = value, let selected = selected {
                     Text(selected)
                 } else {
                     Text("Empty").foregroundColor(.gray)
+                }
+            }
+            .alert("Add New Option", isPresented: $isShowingAddOptionAlert) {
+                TextField("Option Name", text: $newOptionText)
+                Button("Cancel", role: .cancel) { newOptionText = "" }
+                Button("Save") {
+                    let trimmedOption = newOptionText.trimmingCharacters(in: .whitespaces)
+                    guard !trimmedOption.isEmpty else { return }
+
+                    viewModel.addOption(to: definition.id, newOption: trimmedOption)
+                    value = .selection(trimmedOption)
+                    
+                    newOptionText = ""
                 }
             }
             
@@ -161,10 +200,10 @@ struct PropertyEditorView: View {
         )
     }
     
-    private var statusBinding: Binding<TaskStatus> {
-        Binding<TaskStatus>(
+    private var statusBinding: Binding<CardStatus> {
+        Binding<CardStatus>(
             get: {
-                if case .selection(let option) = value, let status = TaskStatus(rawValue: option ?? "") {
+                if case .selection(let option) = value, let status = CardStatus(rawValue: option ?? "") {
                     return status
                 }
                 return .notStarted
@@ -173,10 +212,10 @@ struct PropertyEditorView: View {
         )
     }
     
-    private var difficultyBinding: Binding<Difficulty> {
-        Binding<Difficulty>(
+    private var difficultyBinding: Binding<CardDifficulty> {
+        Binding<CardDifficulty>(
             get: {
-                if case .selection(let option) = value, let difficulty = Difficulty(rawValue: option ?? "") {
+                if case .selection(let option) = value, let difficulty = CardDifficulty(rawValue: option ?? "") {
                     return difficulty
                 }
                 return .easy
