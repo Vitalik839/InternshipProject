@@ -7,12 +7,12 @@
 
 import Foundation
 
-struct SortRule: Equatable {
+struct SortRule: Codable, Hashable {
     var fieldID: UUID
     var direction: SortDirection = .ascending
 }
 
-enum SortDirection: String, CaseIterable {
+enum SortDirection: String, Codable, CaseIterable {
     case ascending = "Ascending"
     case descending = "Descending"
 }

@@ -16,13 +16,30 @@ class ProjectsViewModel: ObservableObject {
     }
 
     func addProject(_ project: Project) {
-        projects.append(project)
+        var projectToSave = project
+        let defaultGroupingField = projectToSave.fieldDefinitions.filter {
+            $0.type == .selection || $0.type == .multiSelection  || $0.type == .date
+        }.first?.id
+    
+        let boardView = ViewMode(
+            name: "By Group",
+            displayType: .board,
+            groupingFieldID: defaultGroupingField
+        )
+        
+        let tableView = ViewMode(
+            name: "All Tasks",
+            displayType: .table
+        )
+        
+        projectToSave.views = [tableView, boardView]
+        projects.append(projectToSave)
     }
 
     func deleteProject(at offsets: IndexSet) {
         projects.remove(atOffsets: offsets)
     }
-
+    
     private func loadMockProjects() {
         let statusDef = FieldDefinition(name: "Status", type: .selection, selectionOptions: CardStatus.allCases.map(\.rawValue))
         let difficultyDef = FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: CardDifficulty.allCases.map(\.rawValue))
@@ -73,6 +90,6 @@ class ProjectsViewModel: ObservableObject {
             cards: [card1, card2, card3]
         )
         
-        self.projects = [project1]
+        addProject(project1)
     }
 }

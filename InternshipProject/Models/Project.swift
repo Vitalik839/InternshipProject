@@ -12,4 +12,5 @@ struct Project: Identifiable, Codable, Hashable {
     var name: String
     var fieldDefinitions: [FieldDefinition]
     var cards: [Card] = []
+    var views: [ViewMode] = []
 }

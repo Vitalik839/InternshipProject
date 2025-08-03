@@ -15,30 +15,38 @@ struct ViewsController: View {
         self._project = project
         self._boardLogic = StateObject(wrappedValue: CardViewModel(project: project.wrappedValue))
     }
-    @State private var currentMode: ViewMode = .byGroup
     @State private var selectedCardID: UUID?
     @State private var isTargetedForDeletion = false
     
+    private var currentDisplayType: ViewMode.DisplayType? {
+        boardLogic.project.views.first { $0.id == boardLogic.selectedViewID }?.displayType
+    }
     
     var body: some View {
         VStack(alignment: .leading){
-            Toolbar(selectedMode: $currentMode, searchText: $boardLogic.searchText)
+            Toolbar(searchText: $boardLogic.searchText)
                 .padding(.bottom, 10)
             
-            switch currentMode {
-            case .byGroup:
-                Picker("Group By", selection: $boardLogic.groupingFieldID.animation()) {
-                    ForEach(boardLogic.groupableFields) { field in
-                        Text(field.name).tag(field.id as UUID?)
+            if let displayType = currentDisplayType {
+                switch displayType {
+                case .board:
+                    Picker("Group By", selection: $boardLogic.groupingFieldID.animation()) {
+                        ForEach(boardLogic.groupableFields) { field in
+                            Text(field.name).tag(field.id as UUID?)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.bottom)
+                    BoardView(selectedCardID: $selectedCardID)
+                case .table:
+                    AllCardsView(viewModel: boardLogic) { card in
+                        self.selectedCardID = card.id
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(.bottom)
-                BoardView(selectedCardID: $selectedCardID)
-            case .all:
-                AllCardsView(viewModel: boardLogic) { card in
-                    self.selectedCardID = card.id
-                }
+            } else {
+                Text("Select a view to start")
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             TrashView(isTargeted: $isTargetedForDeletion)
                 .dropDestination(for: Card.self) { droppedCards, location in

@@ -18,8 +18,17 @@ final class CardViewModel: ObservableObject {
     @Published var projectDefinitions: [FieldDefinition]
     @Published var visibleCardPropertyIDs: Set<UUID> = []
     @Published var groupingFieldID: UUID?
-    @Published var activeFilters: [UUID: FilterType] = [:]
-    @Published var activeSortRule: SortRule?
+    @Published var activeFilters: [UUID: FilterType] = [:] {
+        didSet { saveCurrentStateToSelectedView() }
+    }
+    @Published var activeSortRule: SortRule? {
+        didSet { saveCurrentStateToSelectedView() }
+    }
+    @Published var selectedViewID: UUID? {
+        didSet {
+            applySelectedViewMode()
+        }
+    }
 
     private let dataProcessor = CardDataProcessor()
     private var cancellables = Set<AnyCancellable>()
@@ -39,8 +48,48 @@ final class CardViewModel: ObservableObject {
         self.groupingFieldID = project.fieldDefinitions.first(where: {
             $0.type == .selection || $0.type == .multiSelection || $0.type == .date
                 })?.id
+
+        self.selectedViewID = project.views.first?.id
         
         setupBindings()
+    }
+    
+    private func saveCurrentStateToSelectedView() {
+        guard let viewID = selectedViewID,
+              let index = project.views.firstIndex(where: { $0.id == viewID }) else { return }
+
+        project.views[index].filters = self.activeFilters
+        project.views[index].sortRule = self.activeSortRule
+    }
+    
+    private func applySelectedViewMode() {
+        guard let viewID = selectedViewID,
+              let config = project.views.first(where: { $0.id == viewID }) else { return }
+        
+        self.activeFilters = config.filters
+        self.activeSortRule = config.sortRule
+        self.groupingFieldID = config.groupingFieldID
+    }
+    
+    func saveNewView(name: String, displayType: ViewMode.DisplayType, groupingFieldID: UUID?) {
+        let newView = ViewMode(
+            name: name,
+            displayType: displayType,
+            groupingFieldID: groupingFieldID,
+            filters: [:],
+            sortRule: nil
+        )
+        project.views.append(newView)
+        self.selectedViewID = newView.id
+    }
+    
+    func deleteView(at offsets: IndexSet) {
+        let viewsToDelete = offsets.map { project.views[$0] }
+        project.views.remove(atOffsets: offsets)
+        
+        if let selected = selectedViewID, viewsToDelete.contains(where: { $0.id == selected }) {
+            selectedViewID = project.views.first?.id
+        }
     }
     
     var groupableFields: [FieldDefinition] {

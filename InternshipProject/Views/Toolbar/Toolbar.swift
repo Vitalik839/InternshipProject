@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct Toolbar: View {
-    @Binding var selectedMode: ViewMode
     @Binding var searchText: String
     
     @EnvironmentObject var viewModel: CardViewModel
@@ -21,14 +20,16 @@ struct Toolbar: View {
     
     @FocusState private var isSearchFieldFocused: Bool
     
+    private var currentViewName: String {
+        viewModel.project.views.first { $0.id == viewModel.selectedViewID }?.name ?? "Select View"
+    }
+    
     var body: some View {
         Text("\(viewModel.project.name)")
             .font(.title)
             .fontWeight(.bold)
             .foregroundStyle(.white)
             .padding(.vertical, 8)
-        Text("Stay organized with tasks, your way")
-            .foregroundStyle(.white)
         
         HStack(spacing: 20) {
             Button(action: {
@@ -36,16 +37,10 @@ struct Toolbar: View {
             }) {
                 HStack {
                     Image(systemName: "arrow.right.circle.fill")
-                    Text(selectedMode.rawValue)
+                    Text(currentViewName)
                     Image(systemName: "chevron.down")
                 }
                 .foregroundColor(.white)
-            }
-            .sheet(isPresented: $showViewModePicker) {
-                ModeSelection(
-                    selectedMode: $selectedMode,
-                    isPresented: $showViewModePicker
-                )
             }
             Spacer()
             
@@ -123,7 +118,6 @@ struct Toolbar: View {
         .background(.bg)
         .sheet(isPresented: $showViewModePicker) {
             ModeSelection(
-                selectedMode: $selectedMode,
                 isPresented: $showViewModePicker
             )
         }

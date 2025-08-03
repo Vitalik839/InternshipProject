@@ -7,45 +7,70 @@
 
 import SwiftUI
 
-enum ViewMode: String, CaseIterable, Identifiable {
-    case all = "All Tasks"
-    case byGroup = "By Group"
-    
-    var id: String { self.rawValue }
-}
-
 struct ModeSelection: View {
-    @Binding var selectedMode: ViewMode
+    @EnvironmentObject var viewModel: CardViewModel
     @Binding var isPresented: Bool
     
-    @Environment(\.dismiss) private var dismiss
+    @State private var isCreatingView = false
+    
+    private var defaultViews: [ViewMode] {
+        Array(viewModel.project.views.prefix(2))
+    }
+    
+    private var customViews: [ViewMode] {
+        Array(viewModel.project.views.dropFirst(2))
+    }
     
     var body: some View {
         NavigationView {
             List {
-                ForEach(ViewMode.allCases) { mode in
-                    HStack {
-                        Text(mode.rawValue)
-                        Spacer()
-                        if mode == selectedMode {
-                            Image(systemName: "checkmark")
-                        }
+                Section(header: Text("Default Views")) {
+                    ForEach(defaultViews) { config in
+                        viewRow(for: config)
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedMode = mode
+                }
+                
+                if !customViews.isEmpty {
+                    Section(header: Text("Custom Views")) {
+                        ForEach(customViews) { config in
+                            viewRow(for: config)
+                        }
+                        .onDelete(perform: deleteCustomView)
                     }
                 }
             }
             .navigationTitle("View Mode")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        isPresented = false
-                        dismiss()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { isCreatingView = true }) {
+                        Image(systemName: "plus")
                     }
                 }
             }
+            .sheet(isPresented: $isCreatingView) {
+                CreateCustomView()
+            }
         }
+    }
+    
+    @ViewBuilder
+    private func viewRow(for config: ViewMode) -> some View {
+        HStack {
+            Text(config.name)
+            Spacer()
+            if config.id == viewModel.selectedViewID {
+                Image(systemName: "checkmark")
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.selectedViewID = config.id
+            isPresented = false
+        }
+    }
+
+    private func deleteCustomView(at offsets: IndexSet) {
+        let originalIndices = IndexSet(offsets.map { $0 + defaultViews.count })
+        viewModel.deleteView(at: originalIndices)
     }
 }

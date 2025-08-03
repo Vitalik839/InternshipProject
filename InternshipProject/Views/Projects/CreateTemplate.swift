@@ -88,19 +88,6 @@ struct CreateTemplate: View {
             }
         }
     }
-    
-    private func getDefaultValue(for type: FieldType) -> FieldValue {
-        switch type {
-        case .text: return .text("")
-        case .number: return .number(0)
-        case .boolean: return .boolean(false)
-        case .date: return .date(Date()) // Починаємо з порожньої дати
-        case .selection: return .selection(nil)
-        case .multiSelection: return .multiSelection([])
-        case .url: return .url(nil)
-        }
-    }
-    
 }
 
 

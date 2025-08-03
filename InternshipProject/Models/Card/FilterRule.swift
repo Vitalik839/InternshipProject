@@ -8,7 +8,7 @@
 import Foundation
 
 
-enum FilterType: Hashable {
+enum FilterType: Codable, Hashable {
     case textContains(String)
     
     case numberRange(start: Double?, end: Double?)
