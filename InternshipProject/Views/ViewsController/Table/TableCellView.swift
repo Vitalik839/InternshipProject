@@ -11,18 +11,20 @@ struct TableCellView: View {
     let card: Card
     let definition: FieldDefinition
     
+    @EnvironmentObject var viewModel: CardViewModel
+    
     private let columnWidth: CGFloat = 180
     
+    private var property: PropertyValue? {
+        card.properties.first { $0.fieldDefinition?.id == definition.id }
+    }
+    
     var body: some View {
-        let value = card.properties[definition.id]
-        
         VStack {
-            if !card.hiddenFieldIDs.contains(definition.id) {
-                if let value = value {
-                    PropertyDisplayView(cardID: card.id, definition: definition, value: value)
-                } else {
-                    Spacer()
-                }
+            if let property = property, !card.isFieldHidden(with: definition.id) {
+                PropertyDisplayView(property: property)
+            } else {
+                Spacer()
             }
         }
         .padding(.horizontal, 8)

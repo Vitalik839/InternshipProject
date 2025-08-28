@@ -8,7 +8,93 @@
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+import SwiftData
 
+@Model
+final class Card {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var hiddenFieldIDs: Data = Data()
+
+    var project: Project?
+    
+    @Relationship(deleteRule: .cascade, inverse: \PropertyValue.card)
+    var properties: [PropertyValue] = []
+
+    init(title: String, project: Project) {
+        self.id = UUID()
+        self.title = title
+        self.project = project
+    }
+    
+    func isFieldHidden(with definitionID: UUID) -> Bool {
+        if let set = try? JSONDecoder().decode(Set<UUID>.self, from: hiddenFieldIDs) {
+            return set.contains(definitionID)
+        }
+        return false
+    }
+    
+    func toggleFieldVisibility(for definitionID: UUID) {
+        var set = (try? JSONDecoder().decode(Set<UUID>.self, from: hiddenFieldIDs)) ?? Set<UUID>()
+        
+        if set.contains(definitionID) {
+            set.remove(definitionID)
+        } else {
+            set.insert(definitionID)
+        }
+        
+        hiddenFieldIDs = (try? JSONEncoder().encode(set)) ?? Data()
+    }
+}
+
+
+@Model
+final class FieldDefinition {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    var type: FieldType
+    var selectionOptions: [String]?
+    
+    var project: Project?
+
+    init(name: String, type: FieldType, selectionOptions: [String]? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.type = type
+        self.selectionOptions = selectionOptions
+    }
+}
+
+
+@Model
+final class PropertyValue {
+    @Attribute(.unique) var id: UUID
+    
+    // Зв'язки
+    var card: Card?
+    var fieldDefinition: FieldDefinition?
+
+    // Замість одного поля `value: Data` робимо окремі поля для кожного типу
+    // Це дозволить базі даних фільтрувати за ними
+    var stringValue: String?
+    var numberValue: Double?
+    var dateValue: Date?
+    var boolValue: Bool?
+    var urlValue: URL?
+    var selectionValue: String? // Для selection та multiSelection
+    var multiSelectionValue: [String]?
+
+    init(card: Card, fieldDefinition: FieldDefinition) {
+        self.id = UUID()
+        self.card = card
+        self.fieldDefinition = fieldDefinition
+    }
+}
+
+
+enum FieldType: String, Codable, CaseIterable {
+    case text, number, boolean, date, url, selection, multiSelection
+}
 enum FieldValue: Codable, Hashable {
     case text(String)
     case number(Double)
@@ -19,33 +105,10 @@ enum FieldValue: Codable, Hashable {
     case multiSelection([String])
 }
 
-enum FieldType: String, Codable, CaseIterable {
-    case text
-    case number
-    case boolean
-    case date
-    case url
-    case selection
-    case multiSelection
-}
 
-struct FieldDefinition: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var name: String
-    var type: FieldType
-    var selectionOptions: [String]?
-}
-
-struct Card: Identifiable, Hashable, Codable {
-    var id: UUID
-    var title: String
-    
-    var properties: [UUID: FieldValue]
-    var hiddenFieldIDs: Set<UUID> = []
-}
 extension Card: Transferable {
     static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .taskCard)
+        ProxyRepresentation(exporting: \.id.uuidString)
     }
 }
 

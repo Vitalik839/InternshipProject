@@ -13,19 +13,16 @@ struct IdentifiableOption: Identifiable {
 }
 
 struct AddPropertyView: View {
-    let projectFields: [FieldDefinition]
-    let addedFields: [FieldDefinition]
-    var onComplete: (FieldDefinition) -> Void
-
-    @Environment(\.dismiss) private var dismiss
+    let suggestedDefinitions: [FieldDefinition]
+    let addedDefinitions: [FieldDefinition]
+    let onComplete: (FieldDefinition) -> Void
     
+    @Environment(\.dismiss) private var dismiss
     @State private var newPropertyName: String = ""
-    @State private var selectionTypeToConfigure: FieldType?
-    @State private var isNavigationActive = false
     
     private var availableSuggestedDefinitions: [FieldDefinition] {
-        let addedNames = Set(addedFields.map { $0.name })
-        return projectFields.filter { !addedNames.contains($0.name) }
+        let addedNames = Set(addedDefinitions.map { $0.name })
+        return suggestedDefinitions.filter { !addedNames.contains($0.name) }
     }
     
     var body: some View {
@@ -33,8 +30,8 @@ struct AddPropertyView: View {
             ZStack {
                 List {
                     if !availableSuggestedDefinitions.isEmpty {
-                        Section("Suggested") {
-                            ForEach(availableSuggestedDefinitions) { definition in
+                        Section("Suggested Properties") {
+                            ForEach(availableSuggestedDefinitions, id: \.name) { definition in
                                 Button(definition.name) {
                                     onComplete(definition)
                                     dismiss()
@@ -47,42 +44,21 @@ struct AddPropertyView: View {
                     
                     Section("Property Types") {
                         ForEach(FieldType.allCases, id: \.self) { type in
-                            Button(action: {
-                                handleTypeSelection(type)
-                            }) {
-                                HStack {
+                            if type == .selection || type == .multiSelection {
+                                NavigationLink(value: type) {
                                     Text(type.rawValue.capitalized)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundColor(.gray.opacity(0.5))
                                 }
-                                .contentShape(Rectangle())
+                                .disabled(newPropertyName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            } else {
+                                Button(type.rawValue.capitalized) {
+                                    let newDefinition = FieldDefinition(name: newPropertyName, type: type)
+                                    onComplete(newDefinition)
+                                    dismiss()
+                                }
+                                .disabled(newPropertyName.trimmingCharacters(in: .whitespaces).isEmpty)
                             }
-                            .buttonStyle(.plain)
-                            .disabled(newPropertyName.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
                     }
-                }
-                if let type = selectionTypeToConfigure {
-                    NavigationLink(
-                        destination: SelectionEditor(
-                            propertyName: newPropertyName,
-                            type: type,
-                            isNameEmpty: newPropertyName.trimmingCharacters(in: .whitespaces).isEmpty,
-                            onSave: { options in
-                                let newDefinition = FieldDefinition(
-                                    name: newPropertyName,
-                                    type: type,
-                                    selectionOptions: options
-                                )
-                                onComplete(newDefinition)
-                                dismiss()
-                            }
-                        ),
-                        isActive: $isNavigationActive,
-                        label: { EmptyView() }
-                    )
                 }
             }
             .navigationTitle("Add Property")
@@ -92,17 +68,22 @@ struct AddPropertyView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-        }
-    }
-    
-    private func handleTypeSelection(_ type: FieldType) {
-        if type == .selection || type == .multiSelection {
-            selectionTypeToConfigure = type
-            isNavigationActive = true
-        } else {
-            let newDefinition = FieldDefinition(name: newPropertyName, type: type)
-            onComplete(newDefinition)
-            dismiss()
+            .navigationDestination(for: FieldType.self) { type in
+                SelectionEditor(
+                    propertyName: newPropertyName,
+                    type: type,
+                    isNameEmpty: newPropertyName.trimmingCharacters(in: .whitespaces).isEmpty,
+                    onSave: { options in
+                        let newDefinition = FieldDefinition(
+                            name: newPropertyName,
+                            type: type,
+                            selectionOptions: options
+                        )
+                        onComplete(newDefinition)
+                        dismiss()
+                    }
+                )
+            }
         }
     }
 }

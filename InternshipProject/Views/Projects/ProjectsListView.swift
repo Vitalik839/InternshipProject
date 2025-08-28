@@ -6,16 +6,21 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ProjectsListView: View {
-    @StateObject private var viewModel = ProjectsViewModel()
+    @Environment(\.modelContext) private var modelContext
+        
+    @Query(sort: \Project.name) private var projects: [Project]
+        
     @State private var isCreatingProject = false
     @State private var offsetsToDelete: IndexSet?
     @State private var showDeleteConfirmation = false
+    
     var body: some View {
         NavigationStack {
             List {
-                ForEach(viewModel.projects) { project in
+                ForEach(projects) { project in
                     NavigationLink(value: project) {
                         VStack(alignment: .leading) {
                             Text(project.name).font(.headline)
@@ -25,10 +30,7 @@ struct ProjectsListView: View {
                         }
                     }
                 }
-                .onDelete { indexSet in
-                    self.offsetsToDelete = indexSet
-                    self.showDeleteConfirmation = true
-                }
+                .onDelete(perform: deleteProjects)
             }
             .navigationTitle("Projects")
             .toolbar {
@@ -39,12 +41,10 @@ struct ProjectsListView: View {
                 }
             }
             .sheet(isPresented: $isCreatingProject) {
-                CreateTemplate(viewModel: viewModel)
+                CreateTemplate()
             }
             .navigationDestination(for: Project.self) { project in
-                if let index = viewModel.projects.firstIndex(where: { $0.id == project.id }) {
-                    ViewsController(project: $viewModel.projects[index])
-                }
+                ViewsController(project: project)
             }
             .confirmationDialog(
                 "Delete this project?",
@@ -53,7 +53,7 @@ struct ProjectsListView: View {
             ) {
                 Button("Delete Project", role: .destructive) {
                     if let offsets = offsetsToDelete {
-                        viewModel.deleteProject(at: offsets)
+                        deleteProjects(at: offsets)
                     }
                 }
                 Button("Cancel", role: .cancel) {
@@ -63,8 +63,18 @@ struct ProjectsListView: View {
         }
         .background(.bg)
     }
+    
+    private func deleteProjects(at offsets: IndexSet) {
+        withAnimation {
+            for index in offsets {
+                modelContext.delete(projects[index])
+            }
+        }
+        offsetsToDelete = nil
+
+    }
 }
 
-#Preview {
-    ProjectsListView()
-}
+//#Preview {
+//    ProjectsListView()
+//}

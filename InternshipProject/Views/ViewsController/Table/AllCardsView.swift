@@ -9,24 +9,25 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct AllCardsView: View {
-    @ObservedObject var viewModel: CardViewModel
+    @EnvironmentObject var viewModel: CardViewModel
+
+    let project: Project
+    let cards: [Card]
     let onCardTapped: (Card) -> Void
-    
+        
     private let borderWidth: CGFloat = 1
     private let borderColor = Color.gray.opacity(0.5)
     private let rowHeight: CGFloat = 44
     private let columnWidth: CGFloat = 180
     
-    // айді картки, над якою перепіщаємо картку, шоб підсвітити верхню ліні, тільки проблема
-    //    з останньою карточкою, треба пофіксити потім
     private var visibleDefinitions: [FieldDefinition] {
         let titleDefinition = FieldDefinition(name: "Title", type: .text)
         
-        let filtered = viewModel.project.fieldDefinitions
+        let propertyDefinitions = project.fieldDefinitions
             .filter { viewModel.visibleCardPropertyIDs.contains($0.id) }
             .sorted { $0.name < $1.name }
         
-        return [titleDefinition] + filtered
+        return [titleDefinition] + propertyDefinitions
     }
     
     var body: some View {
@@ -34,14 +35,14 @@ struct AllCardsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 0) {
-                        ForEach(visibleDefinitions) { definition in
+                        ForEach(visibleDefinitions) { column in
                             HStack {
-                                Text(definition.name).bold()
+                                Text(column.name).bold()
                                 Spacer()
                                 
-                                if definition.name != "Title" {
+                                if column.name != "Title" {
                                     Button(action: {
-                                        viewModel.toggleCardPropertyVisibility(id: definition.id)
+                                        viewModel.toggleCardPropertyVisibility(id: column.id)
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .foregroundColor(.gray)
@@ -58,16 +59,16 @@ struct AllCardsView: View {
                     
                     Rectangle().frame(height: borderWidth).foregroundColor(borderColor)
                     
-                    ForEach(viewModel.filteredCards) { card in
+                    ForEach(cards) { card in
                         HStack(spacing: 0) {
-                            ForEach(visibleDefinitions) { definition in
-                                if definition.name == "Title" {
+                            ForEach(visibleDefinitions) { column in
+                                if column.name == "Title" {
                                     Text(card.title)
                                         .lineLimit(1)
                                         .padding(.horizontal, 8)
                                         .frame(width: columnWidth, alignment: .leading)
                                 } else {
-                                    TableCellView(card: card, definition: definition)
+                                    TableCellView(card: card, definition: column)
                                 }
                                 Rectangle().frame(width: borderWidth).foregroundColor(borderColor)
                             }

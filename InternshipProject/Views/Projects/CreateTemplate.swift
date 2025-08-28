@@ -8,12 +8,11 @@
 import SwiftUI
 
 struct CreateTemplate: View {
-    @ObservedObject var viewModel: ProjectsViewModel
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @State private var newProject = Project(name: "", fieldDefinitions: [], cards: [])
-    
-    @State private var showDatePicker = false
+    @State private var newProject = Project(name: "")
+        
     @State private var showAddPropertySheet = false
     
     let widthFrameLabel: CGFloat = 120
@@ -66,31 +65,42 @@ struct CreateTemplate: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        viewModel.addProject(newProject)
-                        dismiss()
-                    }
-                    .disabled(newProject.name.isEmpty)
+                    Button("Save", action: saveProject)
+                        .disabled(newProject.name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .sheet(isPresented: $showAddPropertySheet) {
                 AddPropertyView(
-                    projectFields: [
+                    suggestedDefinitions: [
                         FieldDefinition(name: "Status", type: .selection, selectionOptions: CardStatus.allCases.map { $0.rawValue }),
                         FieldDefinition(name: "Difficulty", type: .selection, selectionOptions: CardDifficulty.allCases.map { $0.rawValue }),
                         FieldDefinition(name: "Tags", type: .multiSelection, selectionOptions: ["Polish", "Bug", "Feature Request"])
                     ],
-                    addedFields: newProject.fieldDefinitions,
+                    addedDefinitions: newProject.fieldDefinitions,
                     onComplete: { newDefinition in
-                        newProject.fieldDefinitions.append(newDefinition)
+                        if !newProject.fieldDefinitions.contains(where: { $0.name == newDefinition.name }) {
+                            newProject.fieldDefinitions.append(newDefinition)
+                        }
                     }
                 )
             }
         }
     }
+    private func saveProject() {
+        withAnimation {
+            let boardView = ViewMode(name: "Board View", displayType: .board)
+            let tableView = ViewMode(name: "Table View", displayType: .table)
+            
+            newProject.views.append(boardView)
+            newProject.views.append(tableView)
+            
+            modelContext.insert(newProject)
+        }
+        dismiss()
+    }
 }
 
 
-#Preview {
-    CreateTemplate(viewModel: ProjectsViewModel())
-}
+//#Preview {
+//    CreateTemplate(viewModel: ProjectsViewModel())
+//}

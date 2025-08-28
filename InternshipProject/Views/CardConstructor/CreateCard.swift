@@ -6,22 +6,32 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct CreateCard: View {
-    @ObservedObject var viewModel: CardViewModel
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    var onSave: (Card) -> Void
-    @State private var newCard = Card(id: UUID(), title: "", properties: [:])
-    
-    @State private var showDatePicker = false
+    @EnvironmentObject var viewModel: CardViewModel
+
+    @State private var newCard: Card
+    @State private var addedDefinitions: [FieldDefinition]
+    let project: Project
+
     @State private var showAddPropertySheet = false
     
-    @State var addedDefinitions: [FieldDefinition]
-    
-    init(viewModel: CardViewModel, onSave: @escaping (Card) -> Void) {
-        self.viewModel = viewModel
-        self.onSave = onSave
-        self._addedDefinitions = State(initialValue: viewModel.project.fieldDefinitions)
+    init(project: Project) {
+        self.project = project
+        let card = Card(title: "", project: project)
+        let definitions = project.fieldDefinitions
+        
+        for definition in project.fieldDefinitions {
+            let property = PropertyValue(card: card, fieldDefinition: definition)
+            card.properties.append(property)
+        }
+        
+        self._newCard = State(initialValue: card)
+        self._addedDefinitions = State(initialValue: definitions)
+
     }
     
     var body: some View {
@@ -36,13 +46,12 @@ struct CreateCard: View {
                             .font(.title).foregroundColor(.white)
                     }
                     .padding(.bottom)
-                    ForEach(addedDefinitions) { definition in
-                        PropertyEditorView(
-                            definition: definition,
-                            value: $newCard.properties[definition.id]
-                        )
-                        .environmentObject(viewModel)
-                        Divider().background(Color.gray.opacity(0.5))
+                    ForEach(newCard.properties) { definition in
+                        if let property = newCard.properties.first(where: { $0.fieldDefinition?.id == definition.id }) {
+                            
+                            PropertyEditorView(property: property)
+                            Divider().background(Color.gray.opacity(0.5))
+                        }
                         
                     }
                     
@@ -67,27 +76,32 @@ struct CreateCard: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(newCard)
-                        dismiss()
-                    }
+                    Button("Save", action: saveCard)
+                        .disabled(newCard.title.trimmingCharacters(in: .whitespaces).isEmpty)
                     .disabled(newCard.title.isEmpty)
                 }
             }
             .sheet(isPresented: $showAddPropertySheet) {
                 AddPropertyView(
-                    projectFields: viewModel.projectDefinitions,
-                    addedFields: addedDefinitions,
+                    suggestedDefinitions: project.fieldDefinitions,
+                    addedDefinitions: addedDefinitions,
                     onComplete: { selectedDefinition in
                         if !addedDefinitions.contains(where: { $0.id == selectedDefinition.id }) {
                             addedDefinitions.append(selectedDefinition)
                         }
-                        viewModel.addProperty(to: newCard.id, with: selectedDefinition)
-
+                        
+                        if !newCard.properties.contains(where: { $0.fieldDefinition?.id == selectedDefinition.id }) {
+                            let property = PropertyValue(card: newCard, fieldDefinition: selectedDefinition)
+                            newCard.properties.append(property)
+                        }
                     }
                 )
             }
         }
+    }
+    private func saveCard() {
+        modelContext.insert(newCard)
+        dismiss()
     }
 }
 

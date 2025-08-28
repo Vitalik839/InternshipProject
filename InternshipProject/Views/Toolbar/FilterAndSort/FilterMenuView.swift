@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct FilterMenuView: View {
+    let project: Project
+
     @EnvironmentObject var viewModel: CardViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -22,7 +24,7 @@ struct FilterMenuView: View {
                         Text("Sort by")
                         Spacer()
                         if let sortRule = viewModel.activeSortRule,
-                           let field = viewModel.project.fieldDefinitions.first(where: { $0.id == sortRule.fieldID }) {
+                           let field = project.fieldDefinitions.first(where: { $0.id == sortRule.fieldID }) {
                             Text(field.name)
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
@@ -36,7 +38,7 @@ struct FilterMenuView: View {
                 .padding(.top, 20)
                 
                 List {
-                    ForEach(viewModel.project.fieldDefinitions) { field in
+                    ForEach(project.fieldDefinitions) { field in
                         NavigationLink(value: field) {
                             HStack {
                                 Text(field.name)
@@ -68,7 +70,7 @@ struct FilterMenuView: View {
             }
             .sheet(isPresented: $showSortSheet) {
                 NavigationView {
-                    SortMenuView()
+                    SortMenuView(project: project)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -81,6 +83,6 @@ struct FilterMenuView: View {
         }
     }
 }
-#Preview {
-    FilterMenuView()
-}
+//#Preview {
+//    FilterMenuView()
+//}

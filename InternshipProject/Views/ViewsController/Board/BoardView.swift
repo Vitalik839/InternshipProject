@@ -9,45 +9,38 @@ import SwiftUI
 
 struct BoardView: View {
     @EnvironmentObject var boardLogic: CardViewModel
-    @Binding var selectedCardID: UUID?
+    @Binding var selectedCard: Card?
+    let project: Project
+    let cards: [Card]
+    
+    private var groupedCards: [String: [Card]] {
+        guard let groupFieldID = boardLogic.groupingFieldID else { return [:] }
+
+        return Dictionary(grouping: cards) { card in
+            if let property = card.properties.first(where: { $0.fieldDefinition?.id == groupFieldID }) {
+                return property.selectionValue ?? "Uncategorized"
+            }
+            return "Uncategorized"
+        }
+    }
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 8) {
-                    ForEach(boardLogic.currentGroupKeys, id: \.self) { groupKey in
+                    ForEach(boardLogic.getGroupKeys(for: project), id: \.self) { groupKey in
                         ColumnView(
                             groupKey: groupKey,
-                            cards: boardLogic.cards(for: groupKey),
-                            projectDefinitions: boardLogic.project.fieldDefinitions,
-                            visibleCardPropertyIDs: boardLogic.visibleCardPropertyIDs,
-                            columnColor: color(for: groupKey),
-                            onTaskDropped: { droppedCard, newGroup in
-                                boardLogic.handleDrop(of: droppedCard, on: newGroup)
-                            },
+                            cards: groupedCards[groupKey] ?? [],
+                            columnColor: boardLogic.colorForGroup(groupKey, in: project),
                             onCardTapped: { card in
-                                self.selectedCardID = card.id
+                                self.selectedCard = card
                             }
                         ).frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
                 .padding(.top, 8)
             }
-        }
-    }
-    
-    private func color(for groupKey: String) -> Color {
-        guard let fieldID = boardLogic.groupingFieldID,
-              let definition = boardLogic.project.fieldDefinitions.first(where: { $0.id == fieldID })
-        else { return .gray }
-        
-        switch definition.name {
-        case "Status":
-            return CardStatus(rawValue: groupKey)?.colorTask ?? .gray
-        case "Difficulty":
-            return CardDifficulty(rawValue: groupKey)?.color ?? .gray
-        default:
-            return CardStatus.notStarted.colorTask
         }
     }
 }

@@ -9,10 +9,15 @@ import SwiftUI
 
 struct CardView: View {
     let card: Card
-    let projectDefinitions: [FieldDefinition]
-    let visiblePropertyIDs: Set<UUID>
     let backgroundColor: Color
+    
     @EnvironmentObject var viewModel: CardViewModel
+    
+    private var sortedProperties: [PropertyValue] {
+        card.properties.sorted {
+            ($0.fieldDefinition?.name ?? "") < ($1.fieldDefinition?.name ?? "")
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -25,15 +30,17 @@ struct CardView: View {
             }
             .padding(.bottom, 6)
             
-            ForEach(projectDefinitions.filter { visiblePropertyIDs.contains($0.id) && !card.hiddenFieldIDs.contains($0.id) &&
-                $0.id != viewModel.groupingFieldID}) { definition in
-                    if let value = card.properties[definition.id] {
-                        PropertyDisplayView(cardID: card.id,
-                                            definition: definition,
-                                            value: value)
-                        .environmentObject(viewModel)
+            ForEach(sortedProperties) { property in
+                if let definition = property.fieldDefinition {
+                    let isVisible = viewModel.visibleCardPropertyIDs.contains(definition.id)
+                    let isHiddenOnCard = card.isFieldHidden(with: definition.id)
+                    let isGroupingField = (definition.id == viewModel.groupingFieldID)
+                    
+                    if isVisible && !isHiddenOnCard && !isGroupingField {
+                        PropertyDisplayView(property: property)
                     }
                 }
+            }
         }
         .padding()
         .frame(width: 280, alignment: .leading)

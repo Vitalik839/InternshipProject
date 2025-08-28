@@ -9,16 +9,19 @@ import SwiftUI
 
 struct ModeSelection: View {
     @EnvironmentObject var viewModel: CardViewModel
+    @Environment(\.modelContext) private var modelContext
+    
+    let project: Project
     @Binding var isPresented: Bool
     
     @State private var isCreatingView = false
     
     private var defaultViews: [ViewMode] {
-        Array(viewModel.project.views.prefix(2))
+        Array(project.views.prefix(2))
     }
     
     private var customViews: [ViewMode] {
-        Array(viewModel.project.views.dropFirst(2))
+        Array(project.views.dropFirst(2))
     }
     
     var body: some View {
@@ -35,7 +38,7 @@ struct ModeSelection: View {
                         ForEach(customViews) { config in
                             viewRow(for: config)
                         }
-                        .onDelete(perform: deleteCustomView)
+                        .onDelete(perform: deleteView)
                     }
                 }
             }
@@ -48,7 +51,7 @@ struct ModeSelection: View {
                 }
             }
             .sheet(isPresented: $isCreatingView) {
-                CreateCustomView()
+                CreateCustomView(project: project)
             }
         }
     }
@@ -69,8 +72,12 @@ struct ModeSelection: View {
         }
     }
 
-    private func deleteCustomView(at offsets: IndexSet) {
-        let originalIndices = IndexSet(offsets.map { $0 + defaultViews.count })
-        viewModel.deleteView(at: originalIndices)
+    private func deleteView(at offsets: IndexSet) {
+        withAnimation {
+            for index in offsets {
+                let viewToDelete = project.views[index]
+                viewModel.deleteView(viewToDelete)
+            }
+        }
     }
 }

@@ -8,229 +8,135 @@
 import SwiftUI
 
 struct PropertyEditorView: View {
+    @Bindable var property: PropertyValue
+    
     @EnvironmentObject var viewModel: CardViewModel
-
-    let definition: FieldDefinition
-    @Binding var value: FieldValue?
     
     @State private var showDatePicker = false
     @State private var isShowingAddOptionAlert = false
     @State private var newOptionText = ""
     
     var body: some View {
-        HStack (alignment: .top, spacing: 10){
-            Image(systemName: "circle.fill")
-                .foregroundColor(.gray)
-            Text(definition.name)
-            
-            Spacer()
-            
-            Group {
-                switch definition.name {
-                case "Status":
-                    LabelStatus(status: statusBinding)
-                    
-                case "Difficulty":
-                    LabelDifficulty(difficulty: difficultyBinding)
-                    
-                case "Tags":
-                    LabelTags(tags: tagsBinding)
-                    
-                default:
-                    genericPropertyEditor
-                }
+        if let definition = property.fieldDefinition {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "circle.fill")
+                    .foregroundColor(.gray)
+                Text(definition.name)
+                
+                Spacer()
+
+                editor(for: definition)
+                    .foregroundStyle(.white)
             }
-            .foregroundStyle(.white)
-            
+        } else {
+            Text("Error: Property has no definition.")
         }
     }
-
+    
     @ViewBuilder
-    private var genericPropertyEditor: some View {
+    private func editor(for definition: FieldDefinition) -> some View {
+        switch definition.name {
+        case "Status":
+            LabelStatus(status: statusBinding)
+        case "Difficulty":
+            LabelDifficulty(difficulty: difficultyBinding)
+        case "Tags":
+            LabelTags(tags: tagsBinding)
+        default:
+            genericPropertyEditor(definition: definition)
+        }
+    }
+    
+    @ViewBuilder
+    private func genericPropertyEditor(definition: FieldDefinition) -> some View {
         switch definition.type {
         case .text:
-            TextField("Empty", text: textBinding)
+            TextField("Empty", text: Binding(get: { property.stringValue ?? "" }, set: { property.stringValue = $0 }))
                 .multilineTextAlignment(.trailing)
             
         case .number:
-            TextField("0", value: numberBinding, format: .number)
+            TextField("0", value: Binding(get: { property.numberValue ?? 0 }, set: { property.numberValue = $0 }), format: .number)
                 .multilineTextAlignment(.trailing)
                 .keyboardType(.decimalPad)
             
         case .boolean:
-            Toggle("", isOn: boolBinding)
+            Toggle("", isOn: Binding(get: { property.boolValue ?? false }, set: { property.boolValue = $0 }))
                 .frame(width: 50)
             
         case .date:
             HStack {
-                Text(dateBinding.wrappedValue?.formatted(date: .abbreviated, time: .omitted) ?? "Empty")
-                    .foregroundColor(dateBinding.wrappedValue == nil ? .gray : .white)
+                Text(property.dateValue?.formatted(date: .abbreviated, time: .omitted) ?? "Empty")
+                    .foregroundColor(property.dateValue == nil ? .gray : .white)
             }
             .popover(isPresented: $showDatePicker) {
                 DatePicker(
                     "Select Date",
-                    selection: Binding(
-                        get: { dateBinding.wrappedValue ?? Date() },
-                        set: { dateBinding.wrappedValue = $0 }
-                    ),
+                    selection: Binding(get: { property.dateValue ?? Date() }, set: { property.dateValue = $0 }),
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
                 .padding()
             }
-            .onTapGesture {
-                showDatePicker = true
-            }
+            .onTapGesture { showDatePicker = true }
             
         case .selection:
             Menu {
                 ForEach(definition.selectionOptions ?? [], id: \.self) { option in
-                    Button(option) {
-                        value = .selection(option)
-                    }
+                    Button(option) { property.selectionValue = option }
                 }
 
                 Divider()
                 Button(action: { isShowingAddOptionAlert = true }) {
                     Label("Add New Option", systemImage: "plus")
                 }
-                
             } label: {
-                if case .selection(let selected) = value, let selected = selected {
-                    Text(selected)
-                } else {
-                    Text("Empty").foregroundColor(.gray)
-                }
+                Text(property.selectionValue ?? "Empty")
             }
             .alert("Add New Option", isPresented: $isShowingAddOptionAlert) {
                 TextField("Option Name", text: $newOptionText)
                 Button("Cancel", role: .cancel) { newOptionText = "" }
                 Button("Save") {
-                    let trimmedOption = newOptionText.trimmingCharacters(in: .whitespaces)
-                    guard !trimmedOption.isEmpty else { return }
-
-                    viewModel.addOption(to: definition.id, newOption: trimmedOption)
-                    value = .selection(trimmedOption)
-                    
+                    viewModel.addOption(to: definition, newOption: newOptionText)
+                    property.selectionValue = newOptionText.trimmingCharacters(in: .whitespaces)
                     newOptionText = ""
                 }
             }
             
         case .url:
             VStack(alignment: .trailing) {
-                TextField("https://example.com", text: urlBinding)
+                TextField("https://example.com", text: Binding(get: { property.urlValue?.absoluteString ?? "" }, set: { property.urlValue = URL(string: $0) }))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.URL)
                 
-                if let url = URL(string: urlBinding.wrappedValue) {
-                    URLPreview(url: url, style: .large)
-                        .padding(.top, 4)
+                if let url = property.urlValue {
+                    URLPreview(url: url, style: .large).padding(.top, 4)
                 }
             }
             
         case .multiSelection:
-            Text(multiSelectionBinding.wrappedValue.joined(separator: ", "))
+            Text(property.multiSelectionValue?.joined(separator: ", ") ?? "Empty")
                 .lineLimit(1)
         }
     }
     
-    private var textBinding: Binding<String> {
-        Binding<String>(
-            get: {
-                if case .text(let text) = value { return text }
-                return ""
-            },
-            set: { value = .text($0) }
-        )
-    }
-    
-    private var numberBinding: Binding<Double> {
-        Binding<Double>(
-            get: {
-                if case .number(let number) = value { return number }
-                return 0
-            },
-            set: { value = .number($0) }
-        )
-    }
-    
-    private var boolBinding: Binding<Bool> {
-        Binding<Bool>(
-            get: {
-                if case .boolean(let bool) = value { return bool }
-                return false
-            },
-            set: { value = .boolean($0) }
-        )
-    }
-    
-    private var dateBinding: Binding<Date?> {
-        Binding<Date?>(
-            get: {
-                if case .date(let date) = value { return date }
-                return nil
-            },
-            set: { value = .date($0!) }
-        )
-    }
-    
-    private var urlBinding: Binding<String> {
-        Binding<String>(
-            get: {
-                if case .url(let url) = value { return url?.absoluteString ?? "" }
-                return ""
-            },
-            set: {
-                if let newURL = URL(string: $0) {
-                    value = .url(newURL)
-                } else {
-                    value = .url(nil)
-                }
-            }
-        )
-    }
-    
-    private var multiSelectionBinding: Binding<[String]> {
-        Binding<[String]>(
-            get: {
-                if case .multiSelection(let tags) = value { return tags }
-                return []
-            },
-            set: { value = .multiSelection($0) }
-        )
-    }
-    
     private var statusBinding: Binding<CardStatus> {
-        Binding<CardStatus>(
-            get: {
-                if case .selection(let option) = value, let status = CardStatus(rawValue: option ?? "") {
-                    return status
-                }
-                return .notStarted
-            },
-            set: { value = .selection($0.rawValue) }
+        Binding(
+            get: { CardStatus(rawValue: property.selectionValue ?? "") ?? .notStarted },
+            set: { property.selectionValue = $0.rawValue }
         )
     }
     
     private var difficultyBinding: Binding<CardDifficulty> {
-        Binding<CardDifficulty>(
-            get: {
-                if case .selection(let option) = value, let difficulty = CardDifficulty(rawValue: option ?? "") {
-                    return difficulty
-                }
-                return .easy
-            },
-            set: { value = .selection($0.rawValue) }
+        Binding(
+            get: { CardDifficulty(rawValue: property.selectionValue ?? "") ?? .easy },
+            set: { property.selectionValue = $0.rawValue }
         )
     }
     
     private var tagsBinding: Binding<[String]> {
-        Binding<[String]>(
-            get: {
-                if case .multiSelection(let tags) = value { return tags }
-                return []
-            },
-            set: { value = .multiSelection($0) }
+        Binding(
+            get: { property.multiSelectionValue ?? [] },
+            set: { property.multiSelectionValue = $0 }
         )
     }
 }

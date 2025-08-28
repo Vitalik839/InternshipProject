@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct SortMenuView: View {
+    let project: Project
+
     @EnvironmentObject var viewModel: CardViewModel
 
     var body: some View {
@@ -26,14 +28,13 @@ struct SortMenuView: View {
             .foregroundColor(viewModel.activeSortRule == nil ? .blue : .white)
 
             Section("Sort by") {
-                ForEach(viewModel.project.fieldDefinitions) { field in
+                ForEach(project.fieldDefinitions) { field in
                     Button(action: {
                         viewModel.setSort(by: field.id)
                     }) {
                         HStack {
                             Text(field.name)
                             Spacer()
-                            // Якщо сортуємо за цим полем, показуємо іконку напрямку
                             if viewModel.activeSortRule?.fieldID == field.id {
                                 Image(systemName: viewModel.activeSortRule?.direction == .ascending ? "arrow.up" : "arrow.down")
                             }

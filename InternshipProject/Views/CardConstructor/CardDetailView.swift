@@ -6,21 +6,20 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct CardDetailView: View {
-    @Binding var card: Card
-
-    @EnvironmentObject var viewModel: CardViewModel
+    @Bindable var card: Card
     
+    @EnvironmentObject var viewModel: CardViewModel
+
     @Environment(\.dismiss) private var dismiss
     @State private var showAddPropertySheet = false
 
-    private var displayedFields: [FieldDefinition] {
-        let fieldIDsInCard = card.properties.keys
-        return fieldIDsInCard.compactMap { fieldID in
-            viewModel.projectDefinitions.first { $0.id == fieldID }
+    private var sortedProperties: [PropertyValue] {
+        card.properties.sorted {
+            ($0.fieldDefinition?.name ?? "") < ($1.fieldDefinition?.name ?? "")
         }
-        .sorted { $0.name < $1.name }
     }
     
     var body: some View {
@@ -33,28 +32,29 @@ struct CardDetailView: View {
                     
                     Divider()
 
-                    ForEach(displayedFields) { definition in
-                        HStack(spacing: 12) {
-                            PropertyEditorView(
-                                definition: definition,
-                                value: $card.properties[definition.id]
-                            )
-                            Button(action: {
-                                viewModel.toggleVisibility(for: card.id, definitionID: definition.id)
-                            }) {
-                                Image(systemName: card.hiddenFieldIDs.contains(definition.id)  ? "eye.slash" : "eye")
-                                    .foregroundColor(.gray)
+                    ForEach(sortedProperties) { property in
+                        if let definition = property.fieldDefinition {
+                            HStack(spacing: 12) {
+                                PropertyEditorView(property: property)
+                                
+                                Button(action: {
+                                    viewModel.toggleVisibility(for: card, definition: definition)
+                                }) {
+                                    Image(systemName: card.isFieldHidden(with: definition.id) ? "eye.slash" : "eye")
+                                        .foregroundColor(.gray)
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Button(action: {
+                                    viewModel.removeProperty(property)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.gray)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-                            Button(action: {
-                                viewModel.removeProperty(from: card.id, with: definition.id)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray)
-                            }
-                            .buttonStyle(.plain)
+                            Divider()
                         }
-                        Divider()
                     }
 
                     Button(action: { showAddPropertySheet = true }) {
@@ -74,26 +74,26 @@ struct CardDetailView: View {
                 }
             }
             .sheet(isPresented: $showAddPropertySheet) {
-                 AddPropertyView(
-                    projectFields: viewModel.projectDefinitions,
-                    addedFields: displayedFields,
-                    onComplete: { definition in
-                        let finalDefinition = viewModel.findOrCreateDefinition(from: definition)
-                        viewModel.addProperty(to: card.id, with: finalDefinition)
-
-                    }
-                 )
+                if let project = card.project {
+                    AddPropertyView(
+                        suggestedDefinitions: project.fieldDefinitions,
+                        addedDefinitions: card.properties.compactMap { $0.fieldDefinition },
+                        onComplete: { definition in
+                            viewModel.addProperty(to: card, basedOn: definition, in: project)
+                        }
+                    )
+                }
             }
         }
     }
 }
 
-#Preview {
-    @State var card = Card(id: UUID(), title: "Test Card", properties: [:])
-    
-    let project = Project(name: "Test Project", fieldDefinitions: [], cards: [card])
-    let viewModel = CardViewModel(project: project)
-
-    return CardDetailView(card: $card)
-        .environmentObject(viewModel)
-}
+//#Preview {
+//    @State var card = Card(id: UUID(), title: "Test Card", properties: [:])
+//    
+//    let project = Project(name: "Test Project", fieldDefinitions: [], cards: [card])
+//    let viewModel = CardViewModel(project: project)
+//
+//    return CardDetailView(card: $card)
+//        .environmentObject(viewModel)
+//}

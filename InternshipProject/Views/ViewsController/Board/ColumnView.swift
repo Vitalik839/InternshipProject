@@ -7,19 +7,17 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import SwiftData
 
 struct ColumnView: View {
     let groupKey: String
     let cards: [Card]
-    let projectDefinitions: [FieldDefinition]
-    let visibleCardPropertyIDs: Set<UUID>
     let columnColor: Color
-    let onTaskDropped: (Card, String) -> Void
     let onCardTapped: (Card) -> Void
-
-    @State private var selectedCardID: UUID?
+    
     @State private var isTargeted: Bool = false
     @EnvironmentObject var viewModel: CardViewModel
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         VStack (alignment: .leading, spacing: 0){
@@ -31,22 +29,19 @@ struct ColumnView: View {
             .padding(.bottom, 8)
             VStack(spacing: 8) {
                 ForEach(cards) { card in
-                    CardView(card: card,
-                             projectDefinitions: projectDefinitions,
-                             visiblePropertyIDs: visibleCardPropertyIDs,
-                             backgroundColor: columnColor.opacity(0.4)
-                    )
+                    CardView(card: card, backgroundColor: columnColor.opacity(0.4))
                     .onTapGesture {
                         onCardTapped(card)
                     }
                     .draggable(card)
-                    .environmentObject(viewModel)
                 }
             }
             .padding(.bottom)
 
             Button(action: {
-                viewModel.createQuickCard(in: groupKey)
+                if let project = cards.first?.project {
+                    viewModel.createQuickCard(in: groupKey, for: project)
+                }
             }) {
                 HStack {
                     Image(systemName: "plus")
@@ -67,18 +62,26 @@ struct ColumnView: View {
         .frame(width: 300)
         .background(isTargeted ? columnColor.opacity(0.5) : columnColor.opacity(0.25))
         .cornerRadius(12)
-        .dropDestination(for: Card.self) { droppedTasks, location in
-            guard let droppedTask = droppedTasks.first else { return false }
-            onTaskDropped(droppedTask, groupKey)
-            return true
+        .dropDestination(for: String.self) { droppedIDStrings, _ in
+            guard let cardIDString = droppedIDStrings.first,
+                  let cardID = UUID(uuidString: cardIDString) else {
+                return false
+            }
+
+            let descriptor = FetchDescriptor<Card>(predicate: #Predicate { $0.id == cardID })
+            
+            do {
+                if let droppedCard = try modelContext.fetch(descriptor).first {
+                    viewModel.handleDrop(of: droppedCard, on: groupKey)
+                    return true
+                }
+            } catch {
+                print("Failed to fetch card to drop: \(error)")
+            }
+            return false
+            
         } isTargeted: { isTargeting in
             self.isTargeted = isTargeting
-        }
-        .sheet(item: $selectedCardID) { cardID in
-            if let index = viewModel.project.cards.firstIndex(where: { $0.id == cardID }) {
-                CardDetailView(card: $viewModel.project.cards[index])
-                    .environmentObject(viewModel)
-            }
         }
     }
 }

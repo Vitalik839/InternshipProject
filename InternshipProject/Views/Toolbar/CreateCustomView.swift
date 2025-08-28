@@ -11,6 +11,8 @@ struct CreateCustomView: View {
     @EnvironmentObject var viewModel: CardViewModel
     @Environment(\.dismiss) private var dismiss
     
+    let project: Project
+
     @State private var viewName: String = ""
     @State private var displayType: ViewMode.DisplayType = .board
     @State private var groupingFieldID: UUID?
@@ -35,7 +37,7 @@ struct CreateCustomView: View {
                     Section("Board Settings") {
                         Picker("Group By", selection: $groupingFieldID) {
                             Text("None").tag(nil as UUID?)
-                            ForEach(viewModel.groupableFields) { field in
+                            ForEach(viewModel.groupableFields(for: project)) { field in
                                 Text(field.name).tag(field.id as UUID?)
                             }
                         }
@@ -50,12 +52,12 @@ struct CreateCustomView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        viewModel.saveNewView(
+                        viewModel.createNewView(
                             name: viewName,
                             displayType: displayType,
-                            groupingFieldID: groupingFieldID
+                            groupingFieldID: groupingFieldID,
+                            for: project
                         )
-                        
                         dismiss()
                     }
                     .disabled(viewName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -63,7 +65,7 @@ struct CreateCustomView: View {
             }
         }
         .onAppear {
-            groupingFieldID = viewModel.groupableFields.first?.id
+            groupingFieldID = viewModel.groupableFields(for: project).first?.id
         }
     }
 }

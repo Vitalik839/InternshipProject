@@ -8,118 +8,74 @@
 import Foundation
 import SwiftUI
 import Combine
+import SwiftData
 
 @MainActor
 final class CardViewModel: ObservableObject {
-    @Published var project: Project
-    
-    @Published var filteredCards: [Card] = []
+    private var modelContext: ModelContext
+
     @Published var searchText: String = ""
-    @Published var projectDefinitions: [FieldDefinition]
+    @Published var activeFilters: [UUID: FilterType] = [:]
+    @Published var activeSortRule: SortRule?
     @Published var visibleCardPropertyIDs: Set<UUID> = []
-    @Published var groupingFieldID: UUID?
-    @Published var activeFilters: [UUID: FilterType] = [:] {
-        didSet { saveCurrentStateToSelectedView() }
-    }
-    @Published var activeSortRule: SortRule? {
-        didSet { saveCurrentStateToSelectedView() }
-    }
+    
     @Published var selectedViewID: UUID? {
         didSet {
             applySelectedViewMode()
         }
     }
-
-    private let dataProcessor = CardDataProcessor()
-    private var cancellables = Set<AnyCancellable>()
+    @Published var groupingFieldID: UUID?
     
-    private lazy var monthYearFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "LLLL yyyy"
-        return formatter
-    }()
-    
-    init(project: Project) {
-        self.project = project
-        self.filteredCards = project.cards
+    init(project: Project, modelContext: ModelContext) {
+        self.modelContext = modelContext
+        
+        if let firstView = project.views.first {
+            self.selectedViewID = firstView.id
+            applySelectedViewMode(from: firstView)
+        } else {
+            self.groupingFieldID = project.fieldDefinitions.first { $0.type == .selection }?.id
+        }
+        
         self.visibleCardPropertyIDs = Set(project.fieldDefinitions.map { $0.id })
-        self.projectDefinitions = project.fieldDefinitions
-        
-        self.groupingFieldID = project.fieldDefinitions.first(where: {
-            $0.type == .selection || $0.type == .multiSelection || $0.type == .date
-                })?.id
-
-        self.selectedViewID = project.views.first?.id
-        
-        setupBindings()
     }
     
-    private func saveCurrentStateToSelectedView() {
+    private func applySelectedViewMode(from viewMode: ViewMode? = nil) {
         guard let viewID = selectedViewID,
-              let index = project.views.firstIndex(where: { $0.id == viewID }) else { return }
-
-        project.views[index].filters = self.activeFilters
-        project.views[index].sortRule = self.activeSortRule
-    }
-    
-    private func applySelectedViewMode() {
-        guard let viewID = selectedViewID,
-              let config = project.views.first(where: { $0.id == viewID }) else { return }
+              let config = viewMode ?? (try? modelContext.fetch(FetchDescriptor<ViewMode>(predicate: #Predicate { $0.id == viewID })).first)
+        else { return }
         
-        self.activeFilters = config.filters
-        self.activeSortRule = config.sortRule
+        self.activeFilters = (try? JSONDecoder().decode([UUID: FilterType].self, from: config.filtersJSON)) ?? [:]
+        self.activeSortRule = (try? JSONDecoder().decode(SortRule.self, from: config.sortRuleJSON))
         self.groupingFieldID = config.groupingFieldID
     }
     
-    func saveNewView(name: String, displayType: ViewMode.DisplayType, groupingFieldID: UUID?) {
-        let newView = ViewMode(
-            name: name,
-            displayType: displayType,
-            groupingFieldID: groupingFieldID,
-            filters: [:],
-            sortRule: nil
-        )
-        project.views.append(newView)
+    func saveCurrentStateToSelectedView() {
+        guard let viewID = selectedViewID,
+              let config = try? modelContext.fetch(FetchDescriptor<ViewMode>(predicate: #Predicate { $0.id == viewID })).first
+        else { return }
+        
+        config.filtersJSON = (try? JSONEncoder().encode(activeFilters)) ?? Data()
+        config.sortRuleJSON = (try? JSONEncoder().encode(activeSortRule)) ?? Data()
+        config.groupingFieldID = self.groupingFieldID
+    }
+    
+    func createNewView(name: String, displayType: ViewMode.DisplayType, groupingFieldID: UUID?, for project: Project) {
+        let newView = ViewMode(name: name, displayType: displayType, groupingFieldID: groupingFieldID)
+        newView.project = project
+        modelContext.insert(newView)
         self.selectedViewID = newView.id
     }
     
-    func deleteView(at offsets: IndexSet) {
-        let viewsToDelete = offsets.map { project.views[$0] }
-        project.views.remove(atOffsets: offsets)
-        
-        if let selected = selectedViewID, viewsToDelete.contains(where: { $0.id == selected }) {
-            selectedViewID = project.views.first?.id
+    func deleteView(_ viewMode: ViewMode) {
+        if selectedViewID == viewMode.id {
+            selectedViewID = nil
         }
+        modelContext.delete(viewMode)
     }
     
-    var groupableFields: [FieldDefinition] {
-        project.fieldDefinitions.filter {
-            $0.type == .selection || $0.type == .multiSelection  || $0.type == .date
-        }
-    }
-    
-    private func setupBindings() {
-        Publishers.CombineLatest4($project, $searchText, $activeFilters, $activeSortRule)
-            .debounce(for: .milliseconds(200), scheduler: RunLoop.main)
-            .sink { [weak self] (project, search, filters, sortRule) in
-                self?.reloadDisplayedCards()
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func reloadDisplayedCards() {
-        Task {
-            let processedCards = await dataProcessor.processCards(
-                project.cards,
-                searchText: searchText,
-                filters: activeFilters,
-                sortRule: activeSortRule,
-                definitions: projectDefinitions
-            )
-
-            DispatchQueue.main.async {
-                self.filteredCards = processedCards
-            }
+    func groupableFields(for project: Project) -> [FieldDefinition] {
+        return project.fieldDefinitions.filter {
+            $0.type == .selection || $0.type == .multiSelection
         }
     }
     
@@ -131,16 +87,8 @@ final class CardViewModel: ObservableObject {
         }
     }
     
-    func toggleVisibility(for cardID: UUID, definitionID: UUID) {
-        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else {
-            return
-        }
-        
-        if project.cards[cardIndex].hiddenFieldIDs.contains(definitionID) {
-            project.cards[cardIndex].hiddenFieldIDs.remove(definitionID)
-        } else {
-            project.cards[cardIndex].hiddenFieldIDs.insert(definitionID)
-        }
+    func toggleVisibility(for card: Card, definition: FieldDefinition) {
+        card.toggleFieldVisibility(for: definition.id)
     }
     
     func setFilter(_ filter: FilterType?, for fieldID: UUID) {
@@ -167,67 +115,74 @@ final class CardViewModel: ObservableObject {
         activeSortRule = nil
     }
     
-    func addNewCard(_ card: Card) {
-        project.cards.append(card)
-    }
-    
-    func deleteCard(_ cardToDelete: Card) {
-        project.cards.removeAll { $0.id == cardToDelete.id }
-    }
-    
-    func createQuickCard(in groupKey: String) {
-        guard let fieldID = groupingFieldID else { return }
+    func createQuickCard(in groupKey: String, for project: Project) {
+        let newCard = Card(title: "New Task", project: project)
         
-        var newCard = Card(id: UUID(), title: "New Task", properties: [:])
-        newCard.properties[fieldID] = .selection(groupKey)
+        if let fieldID = groupingFieldID,
+           let definition = project.fieldDefinitions.first(where: { $0.id == fieldID }) {
+            let property = PropertyValue(card: newCard, fieldDefinition: definition)
+            property.selectionValue = groupKey
+            newCard.properties.append(property)
+        }
         
-        project.cards.append(newCard)
-    }
-
-    func updateProperty(for cardID: UUID, definitionID: UUID, newValue: FieldValue) {
-        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
-        project.cards[cardIndex].properties[definitionID] = newValue
+        modelContext.insert(newCard)
     }
     
-    func findOrCreateDefinition(from potentialDefinition: FieldDefinition) -> FieldDefinition {
-        if let existingDefinition = project.fieldDefinitions.first(where: { $0.name == potentialDefinition.name }) {
-            return existingDefinition
+    func addProperty(to card: Card, basedOn potentialDefinition: FieldDefinition, in project: Project) {
+        let definition: FieldDefinition
+        if let existingDef = project.fieldDefinitions.first(where: { $0.name.lowercased() == potentialDefinition.name.lowercased() }) {
+            definition = existingDef
         } else {
-            project.fieldDefinitions.append(potentialDefinition)
-            return potentialDefinition
-        }
-    }
-    
-    func addProperty(to cardID: UUID, with definition: FieldDefinition) {
-        if !projectDefinitions.contains(where: { $0.id == definition.id }) {
-            projectDefinitions.append(definition)
+            potentialDefinition.project = project
+            modelContext.insert(potentialDefinition)
+            definition = potentialDefinition
         }
 
-        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
-        project.cards[cardIndex].properties[definition.id] = getDefaultValue(for: definition.type)
+        let hasPropertyAlready = card.properties.contains { $0.fieldDefinition?.id == definition.id }
+        guard !hasPropertyAlready else { return }
+        
+        let newProperty = PropertyValue(card: card, fieldDefinition: definition)
     }
-    
-    func addOption(to definitionID: UUID, newOption: String) {
-        guard let definitionIndex = project.fieldDefinitions.firstIndex(where: { $0.id == definitionID }) else { return }
-        
-        let currentOptions = project.fieldDefinitions[definitionIndex].selectionOptions ?? []
-        guard !currentOptions.contains(newOption) else { return }
-        
-        project.fieldDefinitions[definitionIndex].selectionOptions?.append(newOption)
-    }
-    
-    func removeProperty(from cardID: UUID, with definitionID: UUID) {
-        guard let cardIndex = project.cards.firstIndex(where: { $0.id == cardID }) else { return }
-        
-        project.cards[cardIndex].properties.removeValue(forKey: definitionID)
-        
-        let isPropertyUsedElsewhere = project.cards.contains { card in
-            card.id != cardID && card.properties.keys.contains(definitionID)
+
+    func removeProperty(_ property: PropertyValue) {
+        guard let definitionID = property.fieldDefinition?.id else {
+            modelContext.delete(property)
+            return
         }
         
-        if !isPropertyUsedElsewhere {
-            projectDefinitions.removeAll { $0.id == definitionID }
+        let projectID = property.card?.project?.id
+
+        modelContext.delete(property)
+
+        var descriptor = FetchDescriptor<PropertyValue>(
+            predicate: #Predicate {
+                $0.card?.project?.id == projectID &&
+                $0.fieldDefinition?.id == definitionID
+            }
+        )
+        descriptor.fetchLimit = 1
+
+        do {
+            let remainingProperties = try modelContext.fetch(descriptor)
+            
+            if remainingProperties.isEmpty {
+                if let definitionToDelete = try? modelContext.fetch(FetchDescriptor<FieldDefinition>(predicate: #Predicate { $0.id == definitionID })).first {
+                    modelContext.delete(definitionToDelete)
+                }
+            }
+        } catch {
+            print("Failed to check for orphaned FieldDefinitions: \(error)")
         }
+    }
+    
+    func addOption(to definition: FieldDefinition, newOption: String) {
+        let trimmedOption = newOption.trimmingCharacters(in: .whitespaces)
+        guard !trimmedOption.isEmpty else { return }
+
+        if definition.selectionOptions?.contains(trimmedOption) == true {
+            return
+        }
+        definition.selectionOptions?.append(trimmedOption)
     }
     
     func getDefaultValue(for type: FieldType) -> FieldValue {
@@ -242,70 +197,52 @@ final class CardViewModel: ObservableObject {
         }
     }
     
-    var currentGroupKeys: [String] {
+    func getGroupKeys(for project: Project) -> [String] {
         guard let fieldID = groupingFieldID,
               let definition = project.fieldDefinitions.first(where: { $0.id == fieldID })
         else { return [] }
-        
-        if definition.type == .selection || definition.type == .multiSelection {
-            return definition.selectionOptions ?? []
+
+        guard definition.type == .selection || definition.type == .multiSelection else {
+            return []
         }
-        
-        else if definition.type == .date {
-            let dates = project.cards.compactMap { card -> Date? in
-                if case .date(let date) = card.properties[fieldID] {
-                    return date
-                }
-                return nil
-            }
-            
-            let calendar = Calendar.current
-            let uniqueMonthYearComponents = Set(dates.map {
-                calendar.dateComponents([.year, .month], from: $0)
-            })
-            
-            let sortedComponents = uniqueMonthYearComponents.sorted {
-                let date1 = calendar.date(from: $0)!
-                let date2 = calendar.date(from: $1)!
-                return date1 < date2
-            }
-            
-            return sortedComponents.map { monthYearFormatter.string(from: calendar.date(from: $0)!) }
-        }
-        
-        return []
+
+        return definition.selectionOptions ?? []
     }
     
-    func cards(for groupKey: String) -> [Card] {
+    func colorForGroup(_ groupKey: String, in project: Project) -> Color {
         guard let fieldID = groupingFieldID,
               let definition = project.fieldDefinitions.first(where: { $0.id == fieldID })
-        else { return [] }
+        else {
+            return .gray
+        }
         
-        return filteredCards.filter { card in
-            if let fieldValue = card.properties[definition.id] {
-                switch fieldValue {
-                case .selection(let option):
-                    return option == groupKey
-                case .multiSelection(let tags):
-                    return tags.contains(groupKey)
-                case .date(let date):
-                    let formattedDate = monthYearFormatter.string(from: date)
-                    return formattedDate == groupKey
-                default:
-                    return false
-                }
-            }
-            return false
+        switch definition.name {
+        case "Status":
+            return CardStatus(rawValue: groupKey)?.colorTask ?? .gray
+            
+        case "Difficulty":
+            return CardDifficulty(rawValue: groupKey)?.color ?? .gray
+            
+        default:
+            return .gray
         }
     }
     
-    func handleDrop(of card: Card, on groupKey: String) {
-        guard let cardIndex = project.cards.firstIndex(where: { $0.id == card.id }),
-              let fieldID = groupingFieldID
-        else { return }
+    func handleDrop(of card: Card, on newGroupKey: String) {
+        guard let fieldID = groupingFieldID else { return }
         
-        withAnimation {
-            project.cards[cardIndex].properties[fieldID] = .selection(groupKey)
+        if let propertyToUpdate = card.properties.first(where: { $0.fieldDefinition?.id == fieldID }) {
+            propertyToUpdate.selectionValue = newGroupKey
+        } else {
+            if let definition = card.project?.fieldDefinitions.first(where: { $0.id == fieldID }) {
+                let newProperty = PropertyValue(card: card, fieldDefinition: definition)
+                newProperty.selectionValue = newGroupKey
+                card.properties.append(newProperty)
+            }
         }
+    }
+    
+    func deleteCard(_ card: Card) {
+        modelContext.delete(card)
     }
 }

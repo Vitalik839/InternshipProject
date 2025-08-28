@@ -6,11 +6,24 @@
 //
 
 import Foundation
+import SwiftData
 
-struct Project: Identifiable, Codable, Hashable {
-    let id: UUID = UUID()
+@Model
+final class Project {
+    @Attribute(.unique) var id: UUID
     var name: String
-    var fieldDefinitions: [FieldDefinition]
+    
+    @Relationship(deleteRule: .cascade, inverse: \Card.project)
     var cards: [Card] = []
+    
+    @Relationship(deleteRule: .cascade, inverse: \FieldDefinition.project)
+    var fieldDefinitions: [FieldDefinition] = []
+    
+    @Relationship(deleteRule: .cascade, inverse: \ViewMode.project)
     var views: [ViewMode] = []
+
+    init(name: String) {
+        self.id = UUID()
+        self.name = name
+    }
 }

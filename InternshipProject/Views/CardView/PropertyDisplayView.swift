@@ -8,58 +8,55 @@
 import SwiftUI
 
 struct PropertyDisplayView: View {
-    @EnvironmentObject var viewModel: CardViewModel
-    
-    let cardID: UUID
-    let definition: FieldDefinition
-    let value: FieldValue
+    @Bindable var property: PropertyValue
     
     var body: some View {
-        switch definition.name {
-        case "Status":
-            LabelStatus(status: statusBinding)
-            
-        case "Difficulty":
-            LabelDifficulty(difficulty: difficultyBinding)
-            
-        case "Tags":
-            LabelTags(tags: tagsBinding)
-            
-        default:
-            defaultPropertyView
+        if let definition = property.fieldDefinition {
+            switch definition.name {
+            case "Status":
+                LabelStatus(status: statusBinding)
+                
+            case "Difficulty":
+                LabelDifficulty(difficulty: difficultyBinding)
+                
+            case "Tags":
+                LabelTags(tags: tagsBinding)
+                
+            default:
+                defaultPropertyView(definition: definition)
+            }
         }
     }
     
     @ViewBuilder
-    private var defaultPropertyView: some View {
+    private func defaultPropertyView(definition: FieldDefinition) -> some View {
         HStack {
             Text("\(definition.name): ")
                 .font(.callout)
                 .foregroundColor(.gray)
             
-            
-            switch value {
-            case .selection(let option):
-                if let option = option {
-                    Text(option)
-                        .font(.caption.bold())
+            switch definition.type {
+            case .selection:
+                if let option = property.selectionValue {
+                    Text(option).font(.caption.bold())
                 }
-            case .text(let text):
-                Text(text)
-                    .font(.callout)
-            case .number(let number):
-                Text(String(format: "%.2f", number))
-                    .font(.callout)
-            case .boolean(let bool):
-                Image(systemName: bool ? "checkmark.square.fill" : "square")
+            case .text:
+                Text(property.stringValue ?? "").font(.callout)
+            case .number:
+                Text(String(format: "%.2f", property.numberValue ?? 0)).font(.callout)
+            case .boolean:
+                Image(systemName: (property.boolValue == true) ? "checkmark.square.fill" : "square")
                     .foregroundColor(.blue)
-            case .date(let date):
-                Text(date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.callout)
-            case .url(let url):
-                URLPreview(url: url, style: .compact)
+            case .date:
+                if let date = property.dateValue {
+                    Text(date.formatted(date: .abbreviated, time: .omitted)).font(.callout)
+                }
+            case .url:
+                URLPreview(url: property.urlValue, style: .compact)
 
-            case .multiSelection(let tags):
+            case .multiSelection:
+                let tags = property.multiSelectionValue ?? []
+                
                 if tags.isEmpty {
                     Text("Empty").foregroundColor(.gray)
                 } else {
@@ -81,60 +78,24 @@ struct PropertyDisplayView: View {
         }
     }
     
-    private var difficultyBinding: Binding<CardDifficulty> {
-        Binding<CardDifficulty>(
-            get: {
-                if case .selection(let option) = value,
-                   let difficulty = CardDifficulty(rawValue: option ?? "") {
-                    return difficulty
-                }
-                return .easy // за замовчуванням
-            },
-            set: { newDifficulty in
-                let newValue = FieldValue.selection(newDifficulty.rawValue)
-                viewModel.updateProperty(
-                    for: cardID,
-                    definitionID: definition.id,
-                    newValue: newValue
-                )
-            }
-        )
-    }
     private var statusBinding: Binding<CardStatus> {
-        Binding<CardStatus>(
-            get: {
-                if case .selection(let option) = value,
-                   let status = CardStatus(rawValue: option ?? "") {
-                    return status
-                }
-                return .notStarted
-            },
-            set: { newStatus in
-                let newValue = FieldValue.selection(newStatus.rawValue)
-                viewModel.updateProperty(
-                    for: cardID,
-                    definitionID: definition.id,
-                    newValue: newValue
-                )
-            }
+        Binding(
+            get: { CardStatus(rawValue: property.selectionValue ?? "") ?? .notStarted },
+            set: { property.selectionValue = $0.rawValue }
         )
     }
+    
+    private var difficultyBinding: Binding<CardDifficulty> {
+        Binding(
+            get: { CardDifficulty(rawValue: property.selectionValue ?? "") ?? .easy },
+            set: { property.selectionValue = $0.rawValue }
+        )
+    }
+    
     private var tagsBinding: Binding<[String]> {
-        Binding<[String]>(
-            get: {
-                if case .multiSelection(let tags) = value {
-                    return tags
-                }
-                return []
-            },
-            set: { newTags in
-                let newValue = FieldValue.multiSelection(newTags)
-                viewModel.updateProperty(
-                    for: cardID,
-                    definitionID: definition.id,
-                    newValue: newValue
-                )
-            }
+        Binding(
+            get: { property.multiSelectionValue ?? [] },
+            set: { property.multiSelectionValue = $0 }
         )
     }
 }

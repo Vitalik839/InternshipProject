@@ -6,70 +6,119 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ViewsController: View {
-    @Binding var project: Project
-    @StateObject private var boardLogic: CardViewModel
-    
-    init(project: Binding<Project>) {
-        self._project = project
-        self._boardLogic = StateObject(wrappedValue: CardViewModel(project: project.wrappedValue))
-    }
-    @State private var selectedCardID: UUID?
+    @Bindable var project: Project
+    @Environment(\.modelContext) private var modelContext
+
+    @StateObject private var viewModel: CardViewModel
+
+    @State private var selectedCard: Card?
     @State private var isTargetedForDeletion = false
+
+    // Ініціалізатор для налаштування ViewModel
+    init(project: Project) {
+        self.project = project
+        let modelContext = project.modelContext!
+        let viewModel = CardViewModel(project: project, modelContext: modelContext)
+        self._viewModel = StateObject(wrappedValue: viewModel)
+    }
     
     private var currentDisplayType: ViewMode.DisplayType? {
-        boardLogic.project.views.first { $0.id == boardLogic.selectedViewID }?.displayType
+        project.views.first { $0.id == viewModel.selectedViewID }?.displayType
     }
     
     var body: some View {
-        VStack(alignment: .leading){
-            Toolbar(searchText: $boardLogic.searchText)
-                .padding(.bottom, 10)
-            
-            if let displayType = currentDisplayType {
-                switch displayType {
-                case .board:
-                    Picker("Group By", selection: $boardLogic.groupingFieldID.animation()) {
-                        ForEach(boardLogic.groupableFields) { field in
-                            Text(field.name).tag(field.id as UUID?)
+        FilteredCardsView(
+            project: project,
+            searchText: viewModel.searchText,
+            activeFilters: viewModel.activeFilters,
+            sortRule: viewModel.activeSortRule
+        ) { cards in
+            VStack(alignment: .leading) {
+                Toolbar(project: project)
+                    .padding(.bottom, 10)
+                
+                VStack {
+                    if let displayType = currentDisplayType {
+                        switch displayType {
+                        case .board:
+                            Picker("Group By", selection: $viewModel.groupingFieldID.animation()) {
+                                ForEach(viewModel.groupableFields(for: project)) { field in
+                                    Text(field.name).tag(field.id as UUID?)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.bottom)
+                            
+                            BoardView(selectedCard: $selectedCard,
+                                      project: project,
+                                      cards: cards
+                            )
+                            
+                        case .table:
+                            AllCardsView(project: project, cards: cards) { card in
+                                self.selectedCard = card
+                            }
                         }
+                    } else {
+                         Text("Select or create a view to start")
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.bottom)
-                    BoardView(selectedCardID: $selectedCardID)
-                case .table:
-                    AllCardsView(viewModel: boardLogic) { card in
-                        self.selectedCardID = card.id
-                    }
+                    
+                    TrashView(isTargeted: $isTargetedForDeletion)
+                        .dropDestination(for: String.self) { droppedIDStrings, _ in
+                            guard let cardIDString = droppedIDStrings.first,
+                                  let cardID = UUID(uuidString: cardIDString) else { return false }
+                            
+                            if let cardToDelete = cards.first(where: { $0.id == cardID }) {
+                                viewModel.deleteCard(cardToDelete)
+                                return true
+                            }
+                            return false
+                        } isTargeted: { isTargeting in
+                            isTargetedForDeletion = isTargeting
+                        }
                 }
-            } else {
-                Text("Select a view to start")
-                    .foregroundColor(.gray)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .sheet(item: $selectedCard) { card in
+                    CardDetailView(card: card)
+                }
             }
-            TrashView(isTargeted: $isTargetedForDeletion)
-                .dropDestination(for: Card.self) { droppedCards, location in
-                    if let card = droppedCards.first {
-                        boardLogic.deleteCard(card)
-                    }
-                    return true
-                } isTargeted: { isTargeting in
-                    isTargetedForDeletion = isTargeting
-                }
         }
         .padding(.horizontal, 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color("bg"))
-        .sheet(item: $selectedCardID) { cardID in
-            if let index = boardLogic.project.cards.firstIndex(where: { $0.id == cardID }) {
-                CardDetailView(card: $boardLogic.project.cards[index])
-            }
-        }
-        .environmentObject(boardLogic)
-        .onChange(of: boardLogic.project) { _, newProjectState in
-            self.project = newProjectState
-        }
+        .environmentObject(viewModel)
+    }
+}
+
+private struct FilteredCardsView<Content: View>: View {
+    @Query var cards: [Card]
+    let content: ([Card]) -> Content
+
+    init(
+        project: Project,
+        searchText: String,
+        activeFilters: [UUID: FilterType],
+        sortRule: SortRule?,
+        @ViewBuilder content: @escaping ([Card]) -> Content
+    ) {
+        // Тепер тут знову один виклик, як і повинно бути!
+        let predicate = CardQueryBuilder.buildPredicate(
+            for: project,
+            searchText: searchText,
+            activeFilters: activeFilters
+        )
+        let sortDescriptors = CardQueryBuilder.buildSortDescriptors(from: sortRule)
+        
+        self._cards = Query(filter: predicate, sort: sortDescriptors, animation: .default)
+        self.content = content
+    }
+
+    var body: some View {
+        content(cards)
     }
 }
 

@@ -6,20 +6,29 @@
 //
 
 import Foundation
+import SwiftData
 
-struct ViewMode: Identifiable, Codable, Hashable {
-    var id = UUID()
+@Model
+final class ViewMode {
+    @Attribute(.unique) var id: UUID
     var name: String
     var displayType: DisplayType
-    
     var groupingFieldID: UUID?
     
-    var filters: [UUID: FilterType] = [:]
-    var sortRule: SortRule?
+    var filtersJSON: Data = Data()
+    var sortRuleJSON: Data = Data()
 
+    var project: Project?
+    
+    init(name: String, displayType: DisplayType, groupingFieldID: UUID? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.displayType = displayType
+        self.groupingFieldID = groupingFieldID
+    }
+    
     enum DisplayType: String, Codable, Hashable, CaseIterable {
         case board = "Board"
         case table = "Table"
     }
 }
-

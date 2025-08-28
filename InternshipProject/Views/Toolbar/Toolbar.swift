@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct Toolbar: View {
-    @Binding var searchText: String
-    
+    let project: Project
+
     @EnvironmentObject var viewModel: CardViewModel
     
     @State private var showCreateCardSheet = false
@@ -21,11 +21,11 @@ struct Toolbar: View {
     @FocusState private var isSearchFieldFocused: Bool
     
     private var currentViewName: String {
-        viewModel.project.views.first { $0.id == viewModel.selectedViewID }?.name ?? "Select View"
+        project.views.first { $0.id == viewModel.selectedViewID }?.name ?? "Select View"
     }
     
     var body: some View {
-        Text("\(viewModel.project.name)")
+        Text(project.name)
             .font(.title)
             .fontWeight(.bold)
             .foregroundStyle(.white)
@@ -61,18 +61,18 @@ struct Toolbar: View {
                 
             } else {
                 HStack(spacing: 8) {
-                    TextField("Search tasks…", text: $searchText)
+                    TextField("Search tasks…", text: $viewModel.searchText)
                         .textFieldStyle(.roundedBorder)
                         .focused($isSearchFieldFocused)
                         .onSubmit {
-                            isSearchFieldFocused = false // Ховаємо клавіатуру
+                            isSearchFieldFocused = false
                         }
                     
                     Button(action: {
                         withAnimation(.easeIn(duration: 0.2)) {
                             isSearching = false
-                            searchText = ""
-                            isSearchFieldFocused = false // Ховаємо клавіатуру
+                            viewModel.searchText = ""
+                            isSearchFieldFocused = false
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
@@ -99,7 +99,7 @@ struct Toolbar: View {
             
             
             .sheet(isPresented: $showPropertiesMenu) {
-                PropertiesMenuView().environmentObject(viewModel)
+                PropertiesMenuView(project: project)
             }
             
             Button(action: {
@@ -118,20 +118,15 @@ struct Toolbar: View {
         .background(.bg)
         .sheet(isPresented: $showViewModePicker) {
             ModeSelection(
+                project: project,
                 isPresented: $showViewModePicker
             )
         }
         .sheet(isPresented: $showCreateCardSheet) {
-            CreateCard(
-                viewModel: viewModel,
-                onSave: { newCard in
-                    viewModel.addNewCard(newCard)
-                    showCreateCardSheet = false
-                }
-            )
+            CreateCard(project: project)
         }
         .sheet(isPresented: $showFilterSheet) {
-            FilterMenuView()
+            FilterMenuView(project: project)
         }
         .environmentObject(viewModel)
     }
